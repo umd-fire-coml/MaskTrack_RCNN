@@ -6,19 +6,13 @@ import numpy as np
 from os.path import join, isfile
 
 
-# TRAIN IMAGES ISSUE
-# No. Files in video lists = 42,369
-# No. Files in train_color = 39,222
-# No. Files in train_label = 37,689
-
-
 ###############################################################################
 #                               CLASS DICTIONARY                              #
 ###############################################################################
 
 classes = {
     33: 'car',
-    34: 'motorbicycle',
+    34: 'motorcycle',
     35: 'bicycle',
     36: 'person',
     37: 'rider',
@@ -29,7 +23,7 @@ classes = {
     1: 'rover',
     17: 'sky',
     161: 'car_groups',
-    162: 'motorbicycle_group',
+    162: 'motorcycle_group',
     163: 'bicycle_group',
     164: 'person_group',
     165: 'rider_group',
@@ -37,7 +31,7 @@ classes = {
     167: 'bus_group',
     168: 'tricycle_group',
     49: 'road',
-    50: 'siderwalk',
+    50: 'sidewalk',
     65: 'traffic_cone',
     66: 'road_pile',
     67: 'fence',
@@ -51,9 +45,11 @@ classes = {
     98: 'bridge',
     99: 'tunnel',
     100: 'overpass',
-    113: 'vegatation',
-    255: 'background'
+    113: 'vegetation'
 }
+
+classes_to_index = dict([(e, i + 1) for i, e in enumerate(classes.keys())])
+index_to_classes = {v: k for k, v in classes_to_index.items()}
 
 ###############################################################################
 #                                CONFIGURATION                                #
@@ -63,7 +59,7 @@ classes = {
 class WADConfig(config.Config):
     NAME = 'WAD'
 
-    NUM_CLASSES = len(classes)
+    NUM_CLASSES = len(classes) + 1
 
 ###############################################################################
 #                                   DATASET                                   #
@@ -78,7 +74,7 @@ class WADDataset(utils.Dataset):
         """Loads all the images from a particular video list into the dataset.
         video_list_filename: path of the file containing the list of images
         img_dir: directory of the images (full, color)
-        train: if this is training data or test data (dtype: boolean)
+        train: if this is training data or test data (datatype: boolean)
         mask_dir (Optional): directory of the mask data
         """
 
@@ -91,42 +87,78 @@ class WADDataset(utils.Dataset):
             # Set paths and img_id
             if train:
                 matches = re.search('^.*\\\\(.*\\.jpg).*\\\\(.*\\.png)', img_mask_paths)
-                img_path, mask_path = matches.group(1, 2)
-                img_id = img_path[:-4]
+                img_file, mask_file = matches.group(1, 2)
+                img_id = img_file[:-4]
             else:
                 matches = re.search('^([0-9a-zA-z]+)', img_mask_paths)
                 img_id = matches.group(1)
-                img_path = img_id + '.jpg'
+                img_file = img_id + '.jpg'
 
-            mask_path = join(mask_dir, mask_path) if train else None
+            # Paths
+            img_path = join(img_dir, img_file)
+            mask_path = join(mask_dir, mask_file) if train else None
+
+            # Check if files exist
+            if not isfile(img_path):
+                continue
+            elif not isfile(mask_path):
+                mask_path = None
 
             # Add the image to the dataset
-            self.add_image("WAD", image_id=img_id, path=join(img_dir, img_path), mask_path=mask_path)
+            self.add_image("WAD", image_id=img_id, path=img_path, mask_path=mask_path)
+
+    def _load_all_images(self, train, img_dir, mask_dir):
+        """Load all images from the img_dir directory, with corresponding masks
+        if doing training.
+        train: if this is training data or test data (datatype: boolean)
+        img_dir: directory of the images
+        mask_dir: directory of the corresponding masks
+        """
+
+        for _, _, images in os.walk(img_dir):
+            break
+
+        for img_filename in images:
+            img_id = img_filename[:-4]
+            img_path = join(img_dir, img_filename)
+
+            if train:
+                mask_filename = img_id + '_instanceIds.png'
+                mask_path = join(mask_dir, mask_filename)
+
+            self.add_image('WAD', img_id, img_path, mask_path=mask_path)
 
     def load_WAD(self, root_dir, subset):
         """Load a subset of the WAD image segmentation dataset.
         root_dir: Root directory of the data
-        subset: Which subset to load: train or test
+        subset: Which subset to load: train-video, train-all, test-video, test-all
         """
 
-        # Add classes (36)
+        # Add classes (35)
         for class_id, class_name in classes.items():
             self.add_class(class_name, class_id, class_name)
 
         # Set up directories
-        assert subset in ['train', 'test']
-        train = subset == 'train'
-
-        # Set up directories and paths
-        video_list_dir = os.path.join(root_dir, 'train_video_list' if train else 'list_test_mapping')
-        video_files_list = [f for f in os.listdir(video_list_dir) if isfile(join(video_list_dir, f))]
+        assert subset in ['train-video', 'train-all', 'test-video', 'test-all']
+        train = subset in ['train-video', 'train-all']
 
         img_dir = os.path.join(root_dir, 'train_color' if train else 'test')
         mask_dir = os.path.join(root_dir, 'train_label') if train else None
 
-        # Load images by video (according to their mappings)
-        for video_file in video_files_list:
-            self.load_video(join(video_list_dir, video_file), img_dir, train, mask_dir=mask_dir)
+        # Process images by video
+        if subset.endswith('video'):
+            # Set up directories and paths
+            video_list_dir = os.path.join(root_dir, 'train_video_list' if train else 'list_test_mapping')
+            for _, _, video_files_list in os.walk(video_list_dir):
+                break
+
+            # Load images by video (according to their mappings)
+            for video_file in video_files_list:
+                self.load_video(join(video_list_dir, video_file), img_dir, train, mask_dir=mask_dir)
+
+        # Process all available images
+        else:
+            self._load_all_images(train, img_dir, mask_dir)
 
     def load_mask(self, image_id):
         """Generate instance masks for an image.
@@ -147,37 +179,26 @@ class WADDataset(utils.Dataset):
         raw_mask = skimage.io.imread(info["mask_path"])
 
         # unique is a sorted array of unique instances (including background)
-        # which is basically class_ids
-        # unique_inverse is an array of indices that correspond to unique
-        unique, unique_inverse = np.unique(raw_mask, return_inverse=True)
+        unique = np.unique(raw_mask)
 
-        # we can reconstruct anyway
-        raw_mask = None
-
-        ##########################################
         # section that removes/involves background
         index = np.searchsorted(unique, 255)
         unique = np.delete(unique, index, axis=0)
 
-        # prepare to broadcast
-        instance_count = unique.shape[0]
-        # make array of all possible indices
-        # [0, 1, ..., index - 1, index + 1, index + 2, ... , instance_count]
-        caster = np.array(list(range(0, index))
-                          + list(range(index + 1, instance_count + 1)))
-        ##########################################
-
-        # get the actually class id
-        # int(PixelValue / 1000) is the label (class of object)
-        class_ids = np.floor_divide(unique, 1000)
-
-        unique_inverse = unique_inverse.reshape(WADDataset.image_height,
-                                                WADDataset.image_width, 1)
+        # tensors!
+        raw_mask = raw_mask.reshape(2710, 3384, 1)
 
         # broadcast!!!!
         # k = instance_count
-        # (h, w, 1) x (1, 1, k) => (h, w, k) : bool array
-        masks = unique_inverse == caster
+        # (h, w, 1) x (k,) => (h, w, k) : bool array
+        masks = raw_mask == unique
+
+        # be free
+        raw_mask = None
+
+        # get the actually class id
+        # int(PixelValue / 1000) is the label (class of object)
+        class_ids = [classes_to_index[e] for e in np.floor_divide(unique, 1000)]
 
         # Return mask, and array of class IDs of each instance. Since we have
         # one class ID only, we return an array of 1s
@@ -185,7 +206,7 @@ class WADDataset(utils.Dataset):
         return masks, class_ids
 
     def image_reference(self, image_id):
-        """Return a link to the image."""
+        """Return the path to the image."""
 
         return self.image_info[image_id]["path"]
 
@@ -195,22 +216,25 @@ class WADDataset(utils.Dataset):
 
 
 def test_loading():
+    # SET THIS TO THE ROOT DIRECTORY OF THE DATASET
     root_dir = 'G:\\Team Drives\\COML-Summer-2018\\Data\\CVPR-WAD-2018'
 
     wad = WADDataset()
-    wad.load_WAD(root_dir, 'train')
+    wad.load_WAD(root_dir, 'test-all')
 
-    print(len(wad.image_info))
+    av_imgs = len(wad.image_info)
+    print(av_imgs)
 
-    img = skimage.io.imread(wad.image_info[0]['path'])
+    which_image = np.random.randint(0, av_imgs)
+
+    img = skimage.io.imread(wad.image_info[which_image]['path'])
     skimage.io.imshow(img)
     skimage.io.show()
 
-    print(wad.image_info[3000])
+    print(wad.image_info[which_image])
 
-    masks, labels = wad.load_mask(3000)
+    masks, labels = wad.load_mask(which_image)
 
-    print(masks.shape)
-
-    skimage.io.imshow(np.uint16(masks[:, :, 0]))
-    skimage.io.show()
+    for i in range(len(masks)):
+        skimage.io.imshow(np.uint16(masks[:, :, i]))
+        skimage.io.show()
