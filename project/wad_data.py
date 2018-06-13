@@ -136,7 +136,7 @@ class WADDataset(utils.Dataset):
 
         # Add classes (35)
         for class_id, class_name in classes.items():
-            self.add_class(class_name, class_id, class_name)
+            self.add_class(class_name, classes_to_index[class_id], class_name)
 
         # Set up directories
         assert subset in ['train-video', 'train-all', 'test-video', 'test-all']
