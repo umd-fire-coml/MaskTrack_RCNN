@@ -2,7 +2,6 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import pickle
 import re
 import skimage.io
 
@@ -75,24 +74,30 @@ class WADDataset(utils.Dataset):
     image_height = 2710
     image_width = 3384
 
-    def _load_video(self, video_list_filename, img_dir, train, mask_dir=None):
+    def _load_video(self, video_list_filename, img_dir, mask_dir=None, assume_match=False):
         """Loads all the images from a particular video list into the dataset.
         video_list_filename: path of the file containing the list of images
-        img_dir: directory of the images (full, color)
-        train: if this is training data or test data (datatype: boolean)
-        mask_dir (Optional): directory of the mask data
-
-        If train is False, mask_dir is ignored.
+        img_dir: directory of the images
+        mask_dir: directory of the mask images, if available
+        assume_match: Whether to assume all images have ground-truth masks (ignored if mask_dir
+        is None)
         """
 
         # Get list of images for this video
-        video_file = open(video_list_filename, 'r')
-        image_filenames = video_file.readlines()
-        video_file.close()
+        image_filenames = None
 
+        with open(video_list_filename, 'r') as video_file:
+            nonlocal image_filenames
+            image_filenames = video_file.readlines()
+
+        if image_filenames is None:
+            print('No video list found at {}.'.format(video_list_filename))
+            return
+
+        # Generate images and masks
         for img_mask_paths in image_filenames:
             # Set paths and img_id
-            if train:
+            if mask_dir is not None:
                 matches = re.search('^.*\\\\(.*\\.jpg).*\\\\(.*\\.png)', img_mask_paths)
                 img_file, mask_file = matches.group(1, 2)
                 img_id = img_file[:-4]
@@ -103,22 +108,25 @@ class WADDataset(utils.Dataset):
 
             # Paths
             img_path = join(img_dir, img_file)
-            mask_path = join(mask_dir, mask_file) if train else None
+            mask_path = join(mask_dir, mask_file) if mask_dir is not None else None
 
             # Check if files exist
-            if not isfile(img_path):
-                continue
-            elif not isfile(mask_path):
-                mask_path = None
+            if not assume_match:
+                if not isfile(img_path):
+                    continue
+                elif not isfile(mask_path):
+                    mask_path = None
 
             # Add the image to the dataset
             self.add_image("WAD", image_id=img_id, path=img_path, mask_path=mask_path)
 
-    def _load_all_images(self, img_dir, mask_dir=None):
+    def _load_all_images(self, img_dir, mask_dir=None, assume_match=False):
         """Load all images from the img_dir directory, with corresponding masks
         if doing training.
         img_dir: directory of the images
-        mask_dir: directory of the corresponding masks
+        mask_dir: directory of the corresponding masks, if available
+        assume_match: Whether to assume all images have ground-truth masks (ignored if mask_dir
+        is None)
         """
 
         # Retrieve list of all images in directory
@@ -135,7 +143,7 @@ class WADDataset(utils.Dataset):
                 mask_path = join(mask_dir, img_id + '_instanceIds.png')
 
                 # Ignores the image (doesn't add) if no mask exists
-                if not isfile(mask_path):
+                if assume_match and not isfile(mask_path):
                     continue
             else:
                 mask_path = None
@@ -143,11 +151,14 @@ class WADDataset(utils.Dataset):
             # Adds the image to the dataset
             self.add_image('WAD', img_id, img_path, mask_path=mask_path)
 
-    def load_WAD(self, root_dir, subset, unlabeled=False):
+    def load_WAD(self, root_dir, subset, labeled=True, assume_match=False):
         """Load a subset of the WAD image segmentation dataset.
         root_dir: Root directory of the data
         subset: Which subset to load: images will be looked for in 'subset_color' and masks will
         be looked for in 'subset_label'
+        labeled: Whether the images have ground-truth masks
+        assume_match: Whether to assume all images have ground-truth masks (ignored if labeled
+        is False)
         """
 
         # Add classes (35)
@@ -158,9 +169,12 @@ class WADDataset(utils.Dataset):
         img_dir = join(root_dir, subset + '_color')
         mask_dir = join(root_dir, subset + '_label')
 
-        assert os.path.exists(img_dir) and os.path.exists(mask_dir)
-
-        self._load_all_images(img_dir, mask_dir)
+        if labeled:
+            assert os.path.exists(img_dir) and os.path.exists(mask_dir)
+            self._load_all_images(img_dir, mask_dir, assume_match=assume_match)
+        else:
+            assert os.path.exists(img_dir) and os.path.exists(mask_dir)
+            self._load_all_images(img_dir, assume_match=assume_match)
 
     def load_mask(self, image_id):
         """Generate instance masks for an image.
