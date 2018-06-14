@@ -2,6 +2,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import pickle
 import re
 import skimage.io
 
@@ -74,6 +75,13 @@ class WADDataset(utils.Dataset):
     image_height = 2710
     image_width = 3384
 
+    def __init__(self):
+        super(self.__class__, self).__init__(self)
+
+        # Add classes (35)
+        for class_id, class_name in classes.items():
+            self.add_class(class_name, classes_to_index[class_id], class_name)
+
     def _load_video(self, video_list_filename, img_dir, mask_dir=None, assume_match=False):
         """Loads all the images from a particular video list into the dataset.
         video_list_filename: path of the file containing the list of images
@@ -84,11 +92,9 @@ class WADDataset(utils.Dataset):
         """
 
         # Get list of images for this video
-        image_filenames = None
-
-        with open(video_list_filename, 'r') as video_file:
-            nonlocal image_filenames
-            image_filenames = video_file.readlines()
+        video_file = open(video_list_filename, 'r')
+        image_filenames = video_file.readlines()
+        video_file.close()
 
         if image_filenames is None:
             print('No video list found at {}.'.format(video_list_filename))
@@ -143,7 +149,7 @@ class WADDataset(utils.Dataset):
                 mask_path = join(mask_dir, img_id + '_instanceIds.png')
 
                 # Ignores the image (doesn't add) if no mask exists
-                if assume_match and not isfile(mask_path):
+                if not assume_match and not isfile(mask_path):
                     continue
             else:
                 mask_path = None
@@ -151,7 +157,7 @@ class WADDataset(utils.Dataset):
             # Adds the image to the dataset
             self.add_image('WAD', img_id, img_path, mask_path=mask_path)
 
-    def load_WAD(self, root_dir, subset, labeled=True, assume_match=False):
+    def load_data(self, root_dir, subset, labeled=True, assume_match=False):
         """Load a subset of the WAD image segmentation dataset.
         root_dir: Root directory of the data
         subset: Which subset to load: images will be looked for in 'subset_color' and masks will
@@ -161,10 +167,6 @@ class WADDataset(utils.Dataset):
         is False)
         """
 
-        # Add classes (35)
-        for class_id, class_name in classes.items():
-            self.add_class(class_name, classes_to_index[class_id], class_name)
-
         # Set up directories
         img_dir = join(root_dir, subset + '_color')
         mask_dir = join(root_dir, subset + '_label')
@@ -173,7 +175,7 @@ class WADDataset(utils.Dataset):
             assert os.path.exists(img_dir) and os.path.exists(mask_dir)
             self._load_all_images(img_dir, mask_dir, assume_match=assume_match)
         else:
-            assert os.path.exists(img_dir) and os.path.exists(mask_dir)
+            assert os.path.exists(img_dir)
             self._load_all_images(img_dir, assume_match=assume_match)
 
     def load_mask(self, image_id):
@@ -217,6 +219,19 @@ class WADDataset(utils.Dataset):
         # Return mask, and array of class IDs of each instance.
         return masks, class_ids
 
+    def load_images_from_file(self, filename):
+        """Load images from pickled file.
+        filename: name of the pickle file
+        """
+        with open(filename, 'rb') as f:
+            self.image_info = pickle.load(f)
+
+    def save_images_to_file(self, filename):
+        """Save loaded images to pickle file.
+        filename: name of the pickle file"""
+        with open(filename, 'wb') as f:
+            pickle.dump(self.image_info, f)
+
     def image_reference(self, image_id):
         """Return the path to the image."""
 
@@ -236,10 +251,10 @@ def test_loading():
     start_time = time()
 
     wad = WADDataset()
-    wad.load_WAD(root_dir, subset)
+    wad.load_data(root_dir, subset)
     wad.prepare()
 
-    print('Time to Load and Prepare Dataset = {} seconds'.format(time() - start_time))
+    print('[TIME] Time to Load and Prepare Dataset = {} seconds'.format(time() - start_time))
 
     # Check number of classes and images
     image_count = len(wad.image_info)
@@ -248,7 +263,6 @@ def test_loading():
 
     # Choose a random image to display
     which_image = np.random.randint(0, image_count)
-    print('\nShowing Image No. {}\n'.format(which_image))
 
     # Display original image
     plt.figure(0)
@@ -257,9 +271,15 @@ def test_loading():
 
     # Display masks if available
     if wad.image_info[which_image]['mask_path'] is not None:
-        # Set up grid of plots for the masks
+        # Generate masks from file
+        start = time()
+
         masks, labels = wad.load_mask(which_image)
         num_masks = masks.shape[2]
+
+        print('[TIME] Time to Generate Masks = {} seconds'.format(time() - start))
+
+        # Set up grid of plots for the masks
         rows, cols = math.ceil(math.sqrt(num_masks)), math.ceil(math.sqrt(num_masks))
         plt.figure(1)
 
@@ -273,6 +293,6 @@ def test_loading():
             plt.title('Mask No. {0} of class {1}'.format(i, instance_class))
             plt.imshow(np.uint8(masks[:, :, i]))
 
+    print('Showing Image No. {}'.format(which_image))
     plt.show()
 
-test_loading()
