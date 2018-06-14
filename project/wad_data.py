@@ -80,7 +80,7 @@ class WADDataset(utils.Dataset):
 
         # Add classes (35)
         for class_id, class_name in classes.items():
-            self.add_class(class_name, classes_to_index[class_id], class_name)
+            self.add_class('WAD', classes_to_index[class_id], class_name)
 
     def _load_video(self, video_list_filename, img_dir, mask_dir=None, assume_match=False):
         """Loads all the images from a particular video list into the dataset.
@@ -235,7 +235,11 @@ class WADDataset(utils.Dataset):
     def image_reference(self, image_id):
         """Return the path to the image."""
 
-        return self.image_info[image_id]["path"]
+        info = self.image_info[image_id]
+        if info["source"] == "balloon":
+            return info["path"]
+        else:
+            super(self.__class__, self).image_reference(image_id)
 
 ###############################################################################
 #                               TESTING SCRIPTS                               #
