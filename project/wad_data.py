@@ -2,8 +2,11 @@ import os
 import re
 from mrcnn import config, utils
 import skimage.io
+import matplotlib.pyplot as plt
 import numpy as np
+import math
 from os.path import join, isfile
+from time import time
 
 
 ###############################################################################
@@ -125,6 +128,8 @@ class WADDataset(utils.Dataset):
             if train:
                 mask_filename = img_id + '_instanceIds.png'
                 mask_path = join(mask_dir, mask_filename)
+            else:
+                mask_path = None
 
             self.add_image('WAD', img_id, img_path, mask_path=mask_path)
 
@@ -216,25 +221,47 @@ class WADDataset(utils.Dataset):
 
 
 def test_loading():
-    # SET THIS TO THE ROOT DIRECTORY OF THE DATASET
+    # SET THESE AS APPROPRIATE
     root_dir = 'G:\\Team Drives\\COML-Summer-2018\\Data\\CVPR-WAD-2018'
+    subset = 'train-all'
+
+    # Load and prepare dataset
+    start_time = time()
 
     wad = WADDataset()
-    wad.load_WAD(root_dir, 'test-all')
+    wad.load_WAD(root_dir, subset)
+    wad.prepare()
 
-    av_imgs = len(wad.image_info)
-    print(av_imgs)
+    print('Time to Load and Prepare Dataset = {} seconds'.format(time() - start_time))
 
-    which_image = np.random.randint(0, av_imgs)
+    # Check number of classes and images
+    image_count = len(wad.image_info)
+    print('No. Images:\t{}'.format(image_count))
+    print('No. Classes:\t{}'.format(len(wad.class_info)))
 
-    img = skimage.io.imread(wad.image_info[which_image]['path'])
-    skimage.io.imshow(img)
-    skimage.io.show()
+    # Choose a random image to displau
+    which_image = np.random.randint(0, image_count)
+    print('\nShowing Image No. {}\n'.format(which_image))
 
-    print(wad.image_info[which_image])
+    # Display original image
+    plt.figure(0)
+    img_path = skimage.io.imread(wad.image_info[which_image]['path'])
+    plt.imshow(img_path)
 
-    masks, labels = wad.load_mask(which_image)
+    # Display masks if available
+    if wad.image_info[which_image]['mask_path'] is not None:
+        # Set up grid of plots for the masks
+        masks, labels = wad.load_mask(which_image)
+        num_masks = masks.shape[2]
+        rows, cols = math.ceil(math.sqrt(num_masks)), math.ceil(math.sqrt(num_masks))
+        plt.figure(1)
 
-    for i in range(len(masks)):
-        skimage.io.imshow(np.uint16(masks[:, :, i]))
-        skimage.io.show()
+        # Plot each mask
+        for i in range(num_masks):
+            plt.subplot(rows, cols, i+1)
+            print('Showing Mask No. {0} for Image No. {1} of class {2}'
+                  .format(i, which_image, classes[index_to_classes[labels[i]]]))
+            plt.imshow(np.uint8(masks[:, :, i]))
+
+    plt.show()
+
