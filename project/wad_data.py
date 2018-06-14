@@ -75,8 +75,6 @@ class WADDataset(utils.Dataset):
     image_height = 2710
     image_width = 3384
 
-    _train_all_image_info_filename = 'train-all_image_info.pkl'
-
     def _load_video(self, video_list_filename, img_dir, train, mask_dir=None):
         """Loads all the images from a particular video list into the dataset.
         video_list_filename: path of the file containing the list of images
@@ -116,7 +114,7 @@ class WADDataset(utils.Dataset):
             # Add the image to the dataset
             self.add_image("WAD", image_id=img_id, path=img_path, mask_path=mask_path)
 
-    def _load_all_images(self, img_dir, mask_dir=None, pickle_dir=None):
+    def _load_all_images(self, img_dir, mask_dir=None):
         """Load all images from the img_dir directory, with corresponding masks
         if doing training.
         img_dir: directory of the images
@@ -145,17 +143,11 @@ class WADDataset(utils.Dataset):
             # Adds the image to the dataset
             self.add_image('WAD', img_id, img_path, mask_path=mask_path)
 
-        pickle_path = join(pickle_dir if pickle_dir is not None else '', self._train_all_image_info_filename)
-
-        with open(pickle_path, 'wb') as f:
-            pickle.dump(self.image_info, f, pickle.HIGHEST_PROTOCOL)
-
-    def load_WAD(self, root_dir, subset, pickle_dir=None):
+    def load_WAD(self, root_dir, subset, unlabeled=False):
         """Load a subset of the WAD image segmentation dataset.
         root_dir: Root directory of the data
-        subset: Which subset to load: train-video, train-all, test-video, test-all
-        pickle_dir: For train-all, directory of the pickle file containing image_info,
-        or the directory to save the pickle file
+        subset: Which subset to load: images will be looked for in 'subset_color' and masks will
+        be looked for in 'subset_label'
         """
 
         # Add classes (35)
@@ -163,33 +155,12 @@ class WADDataset(utils.Dataset):
             self.add_class(class_name, classes_to_index[class_id], class_name)
 
         # Set up directories
-        assert subset in ['train-video', 'train-all', 'test-video', 'test-all']
-        train = subset in ['train-video', 'train-all']
+        img_dir = join(root_dir, subset + '_color')
+        mask_dir = join(root_dir, subset + '_label')
 
-        img_dir = os.path.join(root_dir, 'train_color' if train else 'test')
-        mask_dir = os.path.join(root_dir, 'train_label') if train else None
+        assert os.path.exists(img_dir) and os.path.exists(mask_dir)
 
-        # Process images by video
-        if subset.endswith('video'):
-            # Set up directories and paths
-            video_list_dir = os.path.join(root_dir, 'train_video_list' if train else 'list_test_mapping')
-            for _, _, video_files_list in os.walk(video_list_dir):
-                break
-
-            # Load images by video (according to their mappings)
-            for video_file in video_files_list:
-                self._load_video(join(video_list_dir, video_file), img_dir, train, mask_dir=mask_dir)
-        else:
-            # Use previously generated pickle file if it exists
-            pickle_path = join(pickle_dir if pickle_dir is not None else '', self._train_all_image_info_filename)
-
-            if isfile(pickle_path):
-                print('Using pickle file for train-all: {}'.format(self._train_all_image_info_filename))
-                with open(self._train_all_image_info_filename, 'rb') as f:
-                    self.image_info = pickle.load(f)
-            else:
-                # Process all available images
-                self._load_all_images(img_dir, mask_dir, pickle_dir=pickle_dir)
+        self._load_all_images(img_dir, mask_dir)
 
     def load_mask(self, image_id):
         """Generate instance masks for an image.
@@ -243,9 +214,9 @@ class WADDataset(utils.Dataset):
 
 
 def test_loading():
-    # SET THESE AS APPROPRIATE
+    # SET THESE AS APPROPRIATE FOR YOUR TEST PLATFORM
     root_dir = 'G:\\Team Drives\\COML-Summer-2018\\Data\\CVPR-WAD-2018'
-    subset = 'train-all'
+    subset = 'train'
 
     # Load and prepare dataset
     start_time = time()
@@ -258,7 +229,7 @@ def test_loading():
 
     # Check number of classes and images
     image_count = len(wad.image_info)
-    print('No. Images:\t{}'.format(image_count))
+    print('No. Images:\t\t{}'.format(image_count))
     print('No. Classes:\t{}'.format(len(wad.class_info)))
 
     # Choose a random image to display
@@ -268,8 +239,7 @@ def test_loading():
     # Display original image
     plt.figure(0)
     plt.title('Image No. {}'.format(which_image))
-    img_path = skimage.io.imread(wad.image_info[which_image]['path'])
-    plt.imshow(img_path)
+    plt.imshow(wad.load_image(which_image))
 
     # Display masks if available
     if wad.image_info[which_image]['mask_path'] is not None:
@@ -291,3 +261,4 @@ def test_loading():
 
     plt.show()
 
+test_loading()
