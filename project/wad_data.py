@@ -238,7 +238,7 @@ class WADDataset(utils.Dataset):
         return self.image_info[image_id]["path"]
 
 ###############################################################################
-#                              TESTING & SCRIPTS                              #
+#                               TESTING SCRIPTS                               #
 ###############################################################################
 
 
@@ -291,5 +291,3 @@ def test_loading():
 
     plt.show()
 
-
-test_loading()
