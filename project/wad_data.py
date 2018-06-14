@@ -1,16 +1,18 @@
-import os
-import re
-from mrcnn import config, utils
-import skimage.io
+import math
 import matplotlib.pyplot as plt
 import numpy as np
-import math
+import os
+import pickle
+import re
+import skimage.io
+
+from mrcnn import config, utils
 from os.path import join, isfile
 from time import time
 
 
 ###############################################################################
-#                               CLASS DICTIONARY                              #
+#                              CLASS DICTIONARIES                             #
 ###############################################################################
 
 classes = {
@@ -73,12 +75,16 @@ class WADDataset(utils.Dataset):
     image_height = 2710
     image_width = 3384
 
-    def load_video(self, video_list_filename, img_dir, train, mask_dir=None):
+    _train_all_image_info_filename = 'train-all_image_info.pkl'
+
+    def _load_video(self, video_list_filename, img_dir, train, mask_dir=None):
         """Loads all the images from a particular video list into the dataset.
         video_list_filename: path of the file containing the list of images
         img_dir: directory of the images (full, color)
         train: if this is training data or test data (datatype: boolean)
         mask_dir (Optional): directory of the mask data
+
+        If train is False, mask_dir is ignored.
         """
 
         # Get list of images for this video
@@ -110,33 +116,46 @@ class WADDataset(utils.Dataset):
             # Add the image to the dataset
             self.add_image("WAD", image_id=img_id, path=img_path, mask_path=mask_path)
 
-    def _load_all_images(self, train, img_dir, mask_dir):
+    def _load_all_images(self, img_dir, mask_dir=None, pickle_dir=None):
         """Load all images from the img_dir directory, with corresponding masks
         if doing training.
-        train: if this is training data or test data (datatype: boolean)
         img_dir: directory of the images
         mask_dir: directory of the corresponding masks
         """
 
+        # Retrieve list of all images in directory
         for _, _, images in os.walk(img_dir):
             break
 
+        # Iterate through images and add to dataset
         for img_filename in images:
             img_id = img_filename[:-4]
             img_path = join(img_dir, img_filename)
 
-            if train:
-                mask_filename = img_id + '_instanceIds.png'
-                mask_path = join(mask_dir, mask_filename)
+            # If using masks, only add images to dataset that also have a mask
+            if mask_dir is not None:
+                mask_path = join(mask_dir, img_id + '_instanceIds.png')
+
+                # Ignores the image (doesn't add) if no mask exists
+                if not isfile(mask_path):
+                    continue
             else:
                 mask_path = None
 
+            # Adds the image to the dataset
             self.add_image('WAD', img_id, img_path, mask_path=mask_path)
 
-    def load_WAD(self, root_dir, subset):
+        pickle_path = join(pickle_dir if pickle_dir is not None else '', self._train_all_image_info_filename)
+
+        with open(pickle_path, 'wb') as f:
+            pickle.dump(self.image_info, f, pickle.HIGHEST_PROTOCOL)
+
+    def load_WAD(self, root_dir, subset, pickle_dir=None):
         """Load a subset of the WAD image segmentation dataset.
         root_dir: Root directory of the data
         subset: Which subset to load: train-video, train-all, test-video, test-all
+        pickle_dir: For train-all, directory of the pickle file containing image_info,
+        or the directory to save the pickle file
         """
 
         # Add classes (35)
@@ -159,11 +178,18 @@ class WADDataset(utils.Dataset):
 
             # Load images by video (according to their mappings)
             for video_file in video_files_list:
-                self.load_video(join(video_list_dir, video_file), img_dir, train, mask_dir=mask_dir)
-
-        # Process all available images
+                self._load_video(join(video_list_dir, video_file), img_dir, train, mask_dir=mask_dir)
         else:
-            self._load_all_images(train, img_dir, mask_dir)
+            # Use previously generated pickle file if it exists
+            pickle_path = join(pickle_dir if pickle_dir is not None else '', self._train_all_image_info_filename)
+
+            if isfile(pickle_path):
+                print('Using pickle file for train-all: {}'.format(self._train_all_image_info_filename))
+                with open(self._train_all_image_info_filename, 'rb') as f:
+                    self.image_info = pickle.load(f)
+            else:
+                # Process all available images
+                self._load_all_images(img_dir, mask_dir, pickle_dir=pickle_dir)
 
     def load_mask(self, image_id):
         """Generate instance masks for an image.
@@ -198,16 +224,12 @@ class WADDataset(utils.Dataset):
         # (h, w, 1) x (k,) => (h, w, k) : bool array
         masks = raw_mask == unique
 
-        # be free
-        raw_mask = None
-
         # get the actually class id
         # int(PixelValue / 1000) is the label (class of object)
-        class_ids = [classes_to_index[e] for e in np.floor_divide(unique, 1000)]
+        unique = np.floor_divide(unique, 1000)
+        class_ids = np.array([classes_to_index[e] for e in unique])
 
-        # Return mask, and array of class IDs of each instance. Since we have
-        # one class ID only, we return an array of 1s
-        # return mask, np.ones([mask.shape[-1]], dtype=np.int32)
+        # Return mask, and array of class IDs of each instance.
         return masks, class_ids
 
     def image_reference(self, image_id):
@@ -239,12 +261,13 @@ def test_loading():
     print('No. Images:\t{}'.format(image_count))
     print('No. Classes:\t{}'.format(len(wad.class_info)))
 
-    # Choose a random image to displau
+    # Choose a random image to display
     which_image = np.random.randint(0, image_count)
     print('\nShowing Image No. {}\n'.format(which_image))
 
     # Display original image
     plt.figure(0)
+    plt.title('Image No. {}'.format(which_image))
     img_path = skimage.io.imread(wad.image_info[which_image]['path'])
     plt.imshow(img_path)
 
@@ -258,10 +281,15 @@ def test_loading():
 
         # Plot each mask
         for i in range(num_masks):
-            plt.subplot(rows, cols, i+1)
-            print('Showing Mask No. {0} for Image No. {1} of class {2}'
-                  .format(i, which_image, classes[index_to_classes[labels[i]]]))
+            instance_class = classes[index_to_classes[labels[i]]]
+
+            frame = plt.subplot(rows, cols, i+1)
+            frame.axes.get_xaxis().set_visible(False)
+            frame.axes.get_yaxis().set_visible(False)
+            plt.title('Mask No. {0} of class {1}'.format(i, instance_class))
             plt.imshow(np.uint8(masks[:, :, i]))
 
     plt.show()
 
+
+test_loading()
