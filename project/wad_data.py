@@ -131,21 +131,21 @@ class WADDataset(utils.Dataset):
             # Add the image to the dataset
             self.add_image("WAD", image_id=img_id, path=img_path, mask_path=mask_path)
 
-    def _load_all_images(self, img_dir, mask_dir=None, assume_match=False, test_size=None):
+    def _load_all_images(self, img_dir, mask_dir=None, assume_match=False, val_size=None):
         """Load all images from the img_dir directory, with corresponding masks
         if doing training.
         img_dir: directory of the images
         mask_dir: directory of the corresponding masks, if available
         assume_match: Whether to assume all images have ground-truth masks (ignored if mask_dir
         is None)
-        test_size: only applicable if we are labeled data
+        val_size: only applicable if we are labeled data
         """
 
         # Retrieve list of all images in directory
         for _, _, images in os.walk(img_dir):
             break
 
-        imgs_train, imgs_val = train_test_split(images, test_size=test_size, random_state=self.random_state)
+        imgs_train, imgs_val = train_test_split(images, test_size=val_size, random_state=self.random_state)
 
         # BEWARE:
         # This is a CLONE and we are using a DEEP copy
@@ -188,7 +188,7 @@ class WADDataset(utils.Dataset):
 
         return val_part
 
-    def load_data(self, root_dir, subset, test_size=.25, labeled=True, assume_match=False):
+    def load_data(self, root_dir, subset, val_size=.25, labeled=True, assume_match=False):
         """Load a subset of the WAD image segmentation dataset.
         root_dir: Root directory of the data
         subset: Which subset to load: images will be looked for in 'subset_color' and masks will
@@ -196,7 +196,7 @@ class WADDataset(utils.Dataset):
         labeled: Whether the images have ground-truth masks
         assume_match: Whether to assume all images have ground-truth masks (ignored if labeled
         is False)
-        test_size: applicable only when labeled = True. it is how much to split training for validation
+        val_size: applicable only when labeled = True. it is how much to split training for validation
         """
 
         # Set up directories
@@ -205,7 +205,7 @@ class WADDataset(utils.Dataset):
 
         if labeled:
             assert os.path.exists(img_dir) and os.path.exists(mask_dir)
-            return self._load_all_images(img_dir, mask_dir, assume_match=assume_match)
+            return self._load_all_images(img_dir, mask_dir, assume_match=assume_match, val_size=val_size)
         else:
             assert os.path.exists(img_dir)
             self._load_all_images(img_dir, assume_match=assume_match)
