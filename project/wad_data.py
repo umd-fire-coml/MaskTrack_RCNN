@@ -131,7 +131,7 @@ class WADDataset(utils.Dataset):
             # Add the image to the dataset
             self.add_image("WAD", image_id=img_id, path=img_path, mask_path=mask_path)
 
-    def _load_all_images(self, img_dir, mask_dir=None, assume_match=False, val_size=None):
+    def _load_all_images(self, img_dir, mask_dir=None, assume_match=False, val_size=0):
         """Load all images from the img_dir directory, with corresponding masks
         if doing training.
         img_dir: directory of the images
@@ -144,15 +144,55 @@ class WADDataset(utils.Dataset):
         # Retrieve list of all images in directory
         for _, _, images in os.walk(img_dir):
             break
+        
+        if val_size != 0:
+          imgs_train, imgs_val = train_test_split(images, test_size=val_size, random_state=self.random_state)
+          #print(imgs_train)
+          #print(imgs_val)
 
-        imgs_train, imgs_val = train_test_split(images, test_size=val_size, random_state=self.random_state)
+          val_part = WADDataset()
 
-        # BEWARE:
-        # This is a CLONE and we are using a DEEP copy
-        val_part = copy.deepcopy(self)
+          # Iterate through images and add to dataset
+          for img_filename in imgs_train:
+              img_id = img_filename[:-4]
+              img_path = join(img_dir, img_filename)
 
+              # If using masks, only add images to dataset that also have a mask
+              if mask_dir is not None:
+                  mask_path = join(mask_dir, img_id + '_instanceIds.png')
+
+                  # Ignores the image (doesn't add) if no mask exists
+                  if not assume_match and not isfile(mask_path):
+                      continue
+              else:
+                  mask_path = None
+
+              # Adds the image to the dataset
+              self.add_image('WAD', img_id, img_path, mask_path=mask_path)
+
+          for img_filename in imgs_val:
+              img_id = img_filename[:-4]
+              img_path = join(img_dir, img_filename)
+
+              # If using masks, only add images to dataset that also have a mask
+              if mask_dir is not None:
+                  mask_path = join(mask_dir, img_id + '_instanceIds.png')
+
+                  # Ignores the image (doesn't add) if no mask exists
+                  if not assume_match and not isfile(mask_path):
+                      continue
+              else:
+                  mask_path = None
+
+              # Adds the image to the dataset
+              val_part.add_image('WAD', img_id, img_path, mask_path=mask_path)
+
+          return val_part
+      
+        #otherwise val not 0 do the normal process
+        
         # Iterate through images and add to dataset
-        for img_filename in imgs_train:
+        for img_filename in images:
             img_id = img_filename[:-4]
             img_path = join(img_dir, img_filename)
 
@@ -169,26 +209,9 @@ class WADDataset(utils.Dataset):
             # Adds the image to the dataset
             self.add_image('WAD', img_id, img_path, mask_path=mask_path)
 
-        for img_filename in imgs_val:
-            img_id = img_filename[:-4]
-            img_path = join(img_dir, img_filename)
+        return None
 
-            # If using masks, only add images to dataset that also have a mask
-            if mask_dir is not None:
-                mask_path = join(mask_dir, img_id + '_instanceIds.png')
-
-                # Ignores the image (doesn't add) if no mask exists
-                if not assume_match and not isfile(mask_path):
-                    continue
-            else:
-                mask_path = None
-
-            # Adds the image to the dataset
-            val_part.add_image('WAD', img_id, img_path, mask_path=mask_path)
-
-        return val_part
-
-    def load_data(self, root_dir, subset, val_size=.25, labeled=True, assume_match=False):
+    def load_data(self, root_dir, subset, val_size=0, labeled=True, assume_match=True):
         """Load a subset of the WAD image segmentation dataset.
         root_dir: Root directory of the data
         subset: Which subset to load: images will be looked for in 'subset_color' and masks will
