@@ -211,7 +211,7 @@ class WADDataset(utils.Dataset):
 
         return None
 
-    def load_data(self, root_dir, subset, val_size=0, labeled=True, assume_match=True):
+    def load_data(self, root_dir, subset, val_size=0, labeled=True, assume_match=False):
         """Load a subset of the WAD image segmentation dataset.
         root_dir: Root directory of the data
         subset: Which subset to load: images will be looked for in 'subset_color' and masks will
