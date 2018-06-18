@@ -10,6 +10,9 @@ from mrcnn import config, utils
 from os.path import join, isfile
 from time import time
 
+from sklearn.model_selection import train_test_split
+import copy
+
 
 ###############################################################################
 #                              CLASS DICTIONARIES                             #
@@ -75,12 +78,14 @@ class WADDataset(utils.Dataset):
     image_height = 2710
     image_width = 3384
 
-    def __init__(self):
+    def __init__(self, random_state=42):
         super(self.__class__, self).__init__(self)
 
         # Add classes (35)
         for class_id, class_name in classes.items():
             self.add_class('WAD', classes_to_index[class_id], class_name)
+
+        self.random_state = random_state
 
     def _load_video(self, video_list_filename, img_dir, mask_dir=None, assume_match=False):
         """Loads all the images from a particular video list into the dataset.
@@ -126,21 +131,28 @@ class WADDataset(utils.Dataset):
             # Add the image to the dataset
             self.add_image("WAD", image_id=img_id, path=img_path, mask_path=mask_path)
 
-    def _load_all_images(self, img_dir, mask_dir=None, assume_match=False):
+    def _load_all_images(self, img_dir, mask_dir=None, assume_match=False, test_size=None):
         """Load all images from the img_dir directory, with corresponding masks
         if doing training.
         img_dir: directory of the images
         mask_dir: directory of the corresponding masks, if available
         assume_match: Whether to assume all images have ground-truth masks (ignored if mask_dir
         is None)
+        test_size: only applicable if we are labeled data
         """
 
         # Retrieve list of all images in directory
         for _, _, images in os.walk(img_dir):
             break
 
+        imgs_train, imgs_val = train_test_split(images, test_size=test_size, random_state=self.random_state)
+
+        # BEWARE:
+        # This is a CLONE and we are using a DEEP copy
+        val_part = copy.deepcopy(self)
+
         # Iterate through images and add to dataset
-        for img_filename in images:
+        for img_filename in imgs_train:
             img_id = img_filename[:-4]
             img_path = join(img_dir, img_filename)
 
@@ -157,7 +169,26 @@ class WADDataset(utils.Dataset):
             # Adds the image to the dataset
             self.add_image('WAD', img_id, img_path, mask_path=mask_path)
 
-    def load_data(self, root_dir, subset, labeled=True, assume_match=False):
+        for img_filename in imgs_val:
+            img_id = img_filename[:-4]
+            img_path = join(img_dir, img_filename)
+
+            # If using masks, only add images to dataset that also have a mask
+            if mask_dir is not None:
+                mask_path = join(mask_dir, img_id + '_instanceIds.png')
+
+                # Ignores the image (doesn't add) if no mask exists
+                if not assume_match and not isfile(mask_path):
+                    continue
+            else:
+                mask_path = None
+
+            # Adds the image to the dataset
+            val_part.add_image('WAD', img_id, img_path, mask_path=mask_path)
+
+        return val_part
+
+    def load_data(self, root_dir, subset, test_size=.25, labeled=True, assume_match=False):
         """Load a subset of the WAD image segmentation dataset.
         root_dir: Root directory of the data
         subset: Which subset to load: images will be looked for in 'subset_color' and masks will
@@ -165,6 +196,7 @@ class WADDataset(utils.Dataset):
         labeled: Whether the images have ground-truth masks
         assume_match: Whether to assume all images have ground-truth masks (ignored if labeled
         is False)
+        test_size: applicable only when labeled = True. it is how much to split training for validation
         """
 
         # Set up directories
@@ -173,10 +205,11 @@ class WADDataset(utils.Dataset):
 
         if labeled:
             assert os.path.exists(img_dir) and os.path.exists(mask_dir)
-            self._load_all_images(img_dir, mask_dir, assume_match=assume_match)
+            return self._load_all_images(img_dir, mask_dir, assume_match=assume_match)
         else:
             assert os.path.exists(img_dir)
             self._load_all_images(img_dir, assume_match=assume_match)
+            return None
 
     def load_mask(self, image_id):
         """Generate instance masks for an image.
@@ -299,4 +332,3 @@ def test_loading():
 
     print('Showing Image No. {}'.format(which_image))
     plt.show()
-
