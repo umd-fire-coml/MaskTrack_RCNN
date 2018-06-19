@@ -5,7 +5,7 @@ import re
 import skimage.io
 
 from mrcnn import config, utils
-from os.path import join, isfile
+from os.path import join, isfile, exists
 
 
 ###############################################################################
@@ -170,10 +170,10 @@ class WADDataset(utils.Dataset):
             img_dir = self.root_dir + '_color'
             mask_dir = self.root_dir + '_label'
 
-            assert os.path.exists(img_dir)
+            assert exists(img_dir)
 
             if labeled:
-                assert os.path.exists(mask_dir)
+                assert exists(mask_dir)
 
             self._load_all_images(labeled=labeled, assume_match=assume_match)
 
