@@ -179,7 +179,7 @@ class WADDataset(utils.Dataset):
 
             return val_part
       
-        # otherwise val not 0 do the normal process
+        # otherwise val 0 do the normal process
         
         # Iterate through images and add to dataset
         for img_filename in images:
@@ -190,7 +190,7 @@ class WADDataset(utils.Dataset):
                 mask_filename = img_id + '_instanceIds.png'
 
                 # Ignores the image (doesn't add) if no mask exists
-                if not assume_match and not isfile(mask_filename):
+                if not assume_match and not isfile(join(self.root_dir + '_label', mask_filename)):
                     continue
             else:
                 mask_filename = None
@@ -217,12 +217,11 @@ class WADDataset(utils.Dataset):
         if use_pickle and val_size == 0 and isfile(pickle_path):
             self.load_data_from_file(pickle_path)
         else:
-            # Set up directories
-            img_dir = self.root_dir + '_color'
-            mask_dir = self.root_dir + '_label'
-
-            assert exists(img_dir)
-            if labeled: assert exists(mask_dir)
+            # Check directories for existence
+            print(self.root_dir)
+            assert exists(self.root_dir + '_color')
+            if labeled:
+                assert exists(self.root_dir + '_label')
 
             if labeled:
                 val = self._load_all_images(labeled=labeled, assume_match=assume_match, val_size=val_size)
@@ -320,61 +319,3 @@ class WADDataset(utils.Dataset):
         else:
             super(self.__class__, self).image_reference(image_id)
 
-###############################################################################
-#                               TESTING SCRIPTS                               #
-###############################################################################
-
-
-def test_loading():
-    # SET THESE AS APPROPRIATE FOR YOUR TEST PLATFORM
-    root_dir = 'G:\\Team Drives\\COML-Summer-2018\\Data\\CVPR-WAD-2018'
-    subset = 'train'
-
-    # Load and prepare dataset
-    start_time = time()
-
-    wad = WADDataset()
-    wad.load_data(root_dir, subset)
-    wad.prepare()
-
-    print('[TIME] Time to Load and Prepare Dataset = {} seconds'.format(time() - start_time))
-
-    # Check number of classes and images
-    image_count = len(wad.image_info)
-    print('No. Images:\t\t{}'.format(image_count))
-    print('No. Classes:\t{}'.format(len(wad.class_info)))
-
-    # Choose a random image to display
-    which_image = np.random.randint(0, image_count)
-
-    # Display original image
-    plt.figure(0)
-    plt.title('Image No. {}'.format(which_image))
-    plt.imshow(wad.load_image(which_image))
-
-    # Display masks if available
-    if wad.image_info[which_image]['mask_path'] is not None:
-        # Generate masks from file
-        start = time()
-
-        masks, labels = wad.load_mask(which_image)
-        num_masks = masks.shape[2]
-
-        print('[TIME] Time to Generate Masks = {} seconds'.format(time() - start))
-
-        # Set up grid of plots for the masks
-        rows, cols = math.ceil(math.sqrt(num_masks)), math.ceil(math.sqrt(num_masks))
-        plt.figure(1)
-
-        # Plot each mask
-        for i in range(num_masks):
-            instance_class = classes[index_to_classes[labels[i]]]
-
-            frame = plt.subplot(rows, cols, i+1)
-            frame.axes.get_xaxis().set_visible(False)
-            frame.axes.get_yaxis().set_visible(False)
-            plt.title('Mask No. {0} of class {1}'.format(i, instance_class))
-            plt.imshow(np.uint8(masks[:, :, i]))
-
-    print('Showing Image No. {}'.format(which_image))
-    plt.show()
