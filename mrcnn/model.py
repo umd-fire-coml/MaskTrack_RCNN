@@ -2266,7 +2266,8 @@ class MaskRCNN():
             "*epoch*", "{epoch:04d}")
 
     def train(self, train_dataset, val_dataset, learning_rate, epochs, layers,
-              augmentation=None, callbacks=[]):
+              augmentation=None, callbacks=[], use_multiprocessing=False):
+
         """Train the model.
         train_dataset, val_dataset: Training and validation Dataset objects.
         learning_rate: The learning rate to train with
@@ -2349,7 +2350,7 @@ class MaskRCNN():
             validation_steps=self.config.VALIDATION_STEPS,
             max_queue_size=100,
             workers=workers,
-            use_multiprocessing=True
+            use_multiprocessing=use_multiprocessing
         )
         self.epoch = max(self.epoch, epochs)
 
