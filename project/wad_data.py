@@ -68,6 +68,11 @@ class WADConfig(config.Config):
 
     NUM_CLASSES = len(classes) + 1
 
+    BACKBONE = 'resnet50'
+
+    IMAGES_PER_GPU = 1
+    BATCH_SIZE = 1
+
 ###############################################################################
 #                                   DATASET                                   #
 ###############################################################################
