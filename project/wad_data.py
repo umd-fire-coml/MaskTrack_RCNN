@@ -68,11 +68,6 @@ class WADConfig(config.Config):
 
     NUM_CLASSES = len(classes) + 1
 
-    BACKBONE = 'resnet50'
-
-    IMAGES_PER_GPU = 1
-    BATCH_SIZE = 1
-
 ###############################################################################
 #                                   DATASET                                   #
 ###############################################################################
@@ -148,6 +143,7 @@ class WADDataset(utils.Dataset):
             imgs_train, imgs_val = train_test_split(images, test_size=val_size, random_state=self.random_state)
 
             val_part = WADDataset()
+            val_part.root_dir = self.root_dir
 
             # Iterate through images and add to dataset
             for img_filename in imgs_train:
