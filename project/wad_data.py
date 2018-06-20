@@ -8,10 +8,6 @@ from mrcnn import config, utils
 from os.path import join, isfile, exists
 
 from sklearn.model_selection import train_test_split
-from time import time
-import matplotlib.pyplot as plt
-import math
-
 
 ###############################################################################
 #                              CLASS DICTIONARIES                             #
@@ -58,6 +54,7 @@ classes = {
 classes_to_index = dict([(e, i + 1) for i, e in enumerate(classes.keys())])
 index_to_classes = {v: k for k, v in classes_to_index.items()}
 
+
 ###############################################################################
 #                                CONFIGURATION                                #
 ###############################################################################
@@ -67,6 +64,7 @@ class WADConfig(config.Config):
     NAME = 'WAD'
 
     NUM_CLASSES = len(classes) + 1
+
 
 ###############################################################################
 #                                   DATASET                                   #
@@ -138,7 +136,7 @@ class WADDataset(utils.Dataset):
         # Retrieve list of all images in directory
         for _, _, images in os.walk(self.root_dir + '_color'):
             break
-        
+
         if val_size > 0:
             imgs_train, imgs_val = train_test_split(images, test_size=val_size, random_state=self.random_state)
 
@@ -179,9 +177,9 @@ class WADDataset(utils.Dataset):
                 val_part.add_image('WAD', img_id, img_filename, mask_path=mask_filename)
 
             return val_part
-      
+
         # otherwise val 0 do the normal process
-        
+
         # Iterate through images and add to dataset
         for img_filename in images:
             img_id = img_filename[:-4]
