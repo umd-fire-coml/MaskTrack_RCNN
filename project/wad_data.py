@@ -65,6 +65,8 @@ class WADConfig(config.Config):
 
     NUM_CLASSES = len(classes) + 1
 
+    BACKBONE = 'resnet101'
+
 
 ###############################################################################
 #                                   DATASET                                   #
