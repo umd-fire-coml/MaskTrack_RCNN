@@ -118,11 +118,10 @@ class WADDataset(utils.Dataset):
                 mask_file = None
 
             # Check if files exist
-            if not assume_match:
-                if not isfile(join(self.root_dir + '_label', img_file)):
-                    continue
-                elif not isfile(join(self.root_dir + '_label', mask_file)):
-                    mask_file = None
+            if not isfile(join(self.root_dir + '_color', img_file)):
+                continue
+            if not assume_match and not isfile(join(self.root_dir + '_label', mask_file)):
+                mask_file = None
 
             # Add the image to the dataset
             self.add_image("WAD", image_id=img_id, path=img_file, mask_path=mask_file)
@@ -136,8 +135,7 @@ class WADDataset(utils.Dataset):
         """
 
         # Retrieve list of all images in directory
-        for _, _, images in os.walk(self.root_dir + '_color'):
-            break
+        images = next(os.walk(self.root_dir + '_color'))[2]
 
         if val_size > 0:
             imgs_train, imgs_val = train_test_split(images, test_size=val_size, random_state=self.random_state)
