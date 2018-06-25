@@ -1,7 +1,8 @@
 import keras.layers as KL
 import keras.models as KM
 
-from mrcnn.model import BatchNorm, conv_block, identity_block
+from mrcnn.model import conv_block, identity_block
+
 
 class MaskPropagation(object):
 
@@ -18,19 +19,17 @@ class MaskPropagation(object):
         prev_masks = KL.Input(shape=(None, None, 1))
 
         # feed images through PWC-Net for optical flow
-        opt_flow = KL.Input(shape=(None, None, 1))
+        flow_field = KL.Input(shape=(None, None, 1))
 
         # feed masks and flow field into CNN
-        ###################################################################
         # Conv 5
-        x = KL.concatenate([prev_masks, opt_flow])
+        x = KL.concatenate([prev_masks, flow_field])
         x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a')
         x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b')
-        C5 = x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
-        ###################################################################
+        mask_prop_conv = x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
 
         # return model
-        mp_model = KM.Model(inputs=[], outputs=[C5])
+        mp_model = KM.Model(inputs=[], outputs=[mask_prop_conv])
 
         return mp_model
 
