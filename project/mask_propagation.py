@@ -5,18 +5,20 @@ from mrcnn.model import BatchNorm, conv_block, identity_block
 
 class MaskPropagation(object):
 
-    def build(self, mode):
+    def __init__(self, mode, config):
+        self.mode = mode
+        self.config = config
+
         assert mode in ['training', 'inference']
 
+    def build(self):
         # set up image and mask inputs
-        # optical flow net inputs
         curr_image = KL.Input(shape=(None, None, 3))
         prev_image = KL.Input(shape=(None, None, 3))
-        # CNN inputs
         prev_masks = KL.Input(shape=(None, None, 1))
-        opt_flow = KL.Input(shape=(None, None, 1))
 
         # feed images through PWC-Net for optical flow
+        opt_flow = KL.Input(shape=(None, None, 1))
 
         # feed masks and flow field into CNN
         x = KL.concatenate([prev_masks, opt_flow])
