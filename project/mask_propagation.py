@@ -19,13 +19,16 @@ class MaskPropagation(object):
         # feed images through PWC-Net for optical flow
 
         # feed masks and flow field into CNN
+        ###################################################################
+        # Conv 5
         x = KL.concatenate([prev_masks, opt_flow])
         x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a')
         x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b')
         C5 = x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
+        ###################################################################
 
         # return model
-        mp_model = KM.Model(inputs=[], outputs=[])
+        mp_model = KM.Model(inputs=[], outputs=[C5])
 
         return mp_model
 
