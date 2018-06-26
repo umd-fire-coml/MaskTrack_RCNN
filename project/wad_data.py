@@ -53,6 +53,7 @@ classes = {
 
 classes_to_index = dict([(e, i + 1) for i, e in enumerate(classes.keys())])
 index_to_classes = {v: k for k, v in classes_to_index.items()}
+index_to_class_names = {v: classes[k] for k, v in classes_to_index.items()}
 
 
 ###############################################################################
@@ -77,16 +78,17 @@ class WADDataset(utils.Dataset):
     image_height = 2710
     image_width = 3384
 
-    def __init__(self, random_state=42):
+    def __init__(self, root_dir=None, random_state=42):
         super(self.__class__, self).__init__(self)
 
         # Add classes (35)
         for class_id, class_name in classes.items():
             self.add_class('WAD', classes_to_index[class_id], class_name)
 
+        self.root_dir = root_dir
         self.random_state = random_state
 
-    def _load_video(self, video_list_filename, labeled=True, assume_match=False):
+    def load_video(self, video_list_filename, labeled=True, assume_match=False):
         """Loads all the images from a particular video list into the dataset.
         video_list_filename: path of the file containing the list of images
         img_dir: directory of the images
