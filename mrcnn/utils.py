@@ -38,8 +38,7 @@ def crop_image_by_mask(image, mask, same_dim=False):
     an array with the actual image pixel values in place of the mask
     """
 
-    assert len(
-        image.shape) == 3, 'just images, no batch here'  # ,'are you a >3d being whose images are >rank 3 tensors?!'
+    assert len(image.shape) == 3, 'just images, no batch here'  # ,'are you a >3d being whose images are >rank 3 tensors?!'
     assert len(mask.shape) == 2, 'mask should be [height, width]'
     assert image.shape[:2] == mask.shape
 
