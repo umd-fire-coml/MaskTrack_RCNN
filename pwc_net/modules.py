@@ -1,7 +1,7 @@
 import tensorflow as tf
 from functools import partial
 
-from pwc_net.utils import get_grid
+from utils import get_grid
 
 
 def _conv_block(filters, kernel_size=(3, 3), strides=(1, 1), batch_norm=False):

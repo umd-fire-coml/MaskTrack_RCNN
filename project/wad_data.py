@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 #                              CLASS DICTIONARIES                             #
 ###############################################################################
 
-classes = {
+class_names = {
     33: 'car',
     34: 'motorcycle',
     35: 'bicycle',
@@ -51,9 +51,9 @@ classes = {
     113: 'vegetation'
 }
 
-classes_to_index = dict([(e, i + 1) for i, e in enumerate(classes.keys())])
+classes_to_index = dict([(e, i + 1) for i, e in enumerate(class_names.keys())])
 index_to_classes = {v: k for k, v in classes_to_index.items()}
-index_to_class_names = {v: classes[k] for k, v in classes_to_index.items()}
+index_to_class_names = {v: class_names[k] for k, v in classes_to_index.items()}
 
 
 ###############################################################################
@@ -64,7 +64,7 @@ index_to_class_names = {v: classes[k] for k, v in classes_to_index.items()}
 class WADConfig(config.Config):
     NAME = 'WAD'
 
-    NUM_CLASSES = len(classes) + 1
+    NUM_CLASSES = len(class_names) + 1
 
     BACKBONE = 'resnet101'
 
@@ -82,7 +82,7 @@ class WADDataset(utils.Dataset):
         super(self.__class__, self).__init__(self)
 
         # Add classes (35)
-        for class_id, class_name in classes.items():
+        for class_id, class_name in class_names.items():
             self.add_class('WAD', classes_to_index[class_id], class_name)
 
         self.root_dir = root_dir
@@ -93,8 +93,7 @@ class WADDataset(utils.Dataset):
         video_list_filename: path of the file containing the list of images
         img_dir: directory of the images
         mask_dir: directory of the mask images, if available
-        assume_match: Whether to assume all images have ground-truth masks (ignored if mask_dir
-        is None)
+        assume_match: Whether to assume all images have ground-truth masks
         """
 
         # Get list of images for this video

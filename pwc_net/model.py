@@ -1,12 +1,11 @@
-from pwc_net.modules import *
-
+from modules import *
 
 class PWCNet(object):
 
-    def __init__(self, num_levels = 6, search_range = 4,
-                 output_level = 4, batch_norm = False,
-                 context = 'all', guide = False, r_guide = 3, 
-                 name = 'pwcnet'):
+    def __init__(self, num_levels = 6, search_range=4,
+                 output_level = 4, batch_norm=False,
+                 context='all', guide=False, r_guide=3,
+                 name='pwcnet'):
         self.num_levels = num_levels
         self.s_range = search_range
         self.output_level = output_level
@@ -20,7 +19,7 @@ class PWCNet(object):
         self.warp_layer = WarpingLayer()
         self.cv_layer = CostVolumeLayer(search_range)
         self.of_estimators = [OpticalFlowEstimator(self.batch_norm,
-                                                   name = f'optflow_{l}')\
+                                                   name=f'optflow_{l}')\
                               for l in range(self.num_levels)]
         # self.contexts = ContextNetwork()
         assert self.context in ['all', 'final'], 'context argument should be all/final'
@@ -28,15 +27,15 @@ class PWCNet(object):
             self.context_nets = [ContextNetwork(name = f'context_{l}')\
                                  for l in range(self.num_levels)]
         else:
-            self.context_net = ContextNetwork(name = 'context')
+            self.context_net = ContextNetwork(name='context')
 
         if self.guide:
-            self.guided_filter = FastGuidedFilter(r = self.r_guide, channel_p = 2)
+            self.guided_filter = FastGuidedFilter(r=self.r_guide, channel_p=2)
 
     def __call__(self, images_0, images_1):
-        with tf.variable_scope(self.name) as vs:
+        with tf.variable_scope(self.name):
 
-            pyramid_0 = self.fp_extractor(images_0, reuse = False) + [images_0]
+            pyramid_0 = self.fp_extractor(images_0, reuse=False) + [images_0]
             pyramid_1 = self.fp_extractor(images_1) + [images_1]
 
             flows = []
@@ -47,7 +46,7 @@ class PWCNet(object):
                 b, h, w, _ = tf.unstack(tf.shape(feature_0))
                 
                 if l == 0:
-                    flow = tf.zeros((b, h, w, 2), dtype = tf.float32)
+                    flow = tf.zeros((b, h, w, 2), dtype=tf.float32)
                 else:
                     flow = tf.image.resize_bilinear(flow, (h, w))*2
 
