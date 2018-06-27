@@ -25,8 +25,10 @@ class Tester(object):
                                         axis=0)  # shape(1, 2, h, w, 3)
 
         self.model = PWCNet()
+        print(self.images_tf[:, 0])
         self.finalflow, self.flow_pyramid, _ \
           = self.model(self.images_tf[:, 0], self.images_tf[:, 1])
+        print(self.finalflow.shape)
 
         self.saver = tf.train.Saver()
         if self.args.resume is not None:
@@ -62,7 +64,7 @@ if __name__ == '__main__':
 
 
 # TO RUN TEST FROM COMMAND LINE (from pwc_net directory):
-# python3 test_pwc_net.py --resume model_3000epoch/model_3007.ckpt --input_images "first_filename" "second_filename"
+# python test_pwc_net.py --resume model_3000epoch/model_3007.ckpt --input_images "first_filename" "second_filename"
 #
 # SPECIFICALLY FOR OUR TEST IMAGES:
-# python3 test_pwc_net.py --resume model_3000epoch/model_3007.ckpt --input_images "test_images/frame1.jpg" "test_images/frame2.jpg"
+# python test_pwc_net.py --resume model_3000epoch/model_3007.ckpt --input_images "test_images/frame1.jpg" "test_images/frame2.jpg"
