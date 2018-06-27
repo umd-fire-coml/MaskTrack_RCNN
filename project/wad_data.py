@@ -281,7 +281,7 @@ class WADDataset(utils.Dataset):
         unique = np.delete(unique, index, axis=0)
 
         # tensors!
-        raw_mask = raw_mask.reshape(2710, 3384, 1)
+        raw_mask = raw_mask.reshape(image_height, image_width, 1)
 
         # broadcast!!!!
         # k = instance_count
