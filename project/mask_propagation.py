@@ -123,6 +123,16 @@ class MaskPropagation(object):
 
                     return net, end_points
 
+    def get_flow_field(self, prev_image, curr_image, prev_masks):
+        sess = K.get_session()
+
+        inputs = {self.prev_image: prev_image,
+                  self.curr_image: curr_image}
+
+        mask = sess.run(self.flow_field, feed_dict=inputs)
+
+        return mask
+
     def propagate_masks(self, prev_image, curr_image, prev_masks):
         sess = K.get_session()
 
@@ -130,7 +140,7 @@ class MaskPropagation(object):
                   self.curr_image: curr_image,
                   self.prev_masks: prev_masks}
 
-        mask = sess.run(self.flow_field, feed_dict=inputs)
+        mask = sess.run(self.propagated_mask, feed_dict=inputs)
 
         return mask
 
