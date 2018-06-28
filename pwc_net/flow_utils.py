@@ -2,10 +2,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 from pylab import box
-import matplotlib.pyplot as plt
-import cv2
 import sys
-import argparse
 
 
 __all__ = ['load_flow', 'save_flow', 'vis_flow']

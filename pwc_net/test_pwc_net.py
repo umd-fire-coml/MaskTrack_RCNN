@@ -5,8 +5,8 @@ import numpy as np
 import tensorflow as tf
 import imageio
 
-from model import PWCNet
-from flow_utils import vis_flow_pyramid
+from .model import PWCNet
+from .flow_utils import vis_flow_pyramid
 
 
 class Tester(object):
