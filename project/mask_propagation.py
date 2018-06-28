@@ -2,7 +2,6 @@ import imageio
 import keras.backend as K
 import matplotlib.pyplot as plt
 import numpy as np
-import skimage.io
 import tensorflow as tf
 from tensorflow.contrib import slim
 from tensorflow.contrib.slim.python.slim.nets import resnet_utils
@@ -25,8 +24,8 @@ class MaskPropagation(object):
         self._build()
 
     def _build(self):
-        # set up image and mask inputs
 
+        # set up image and mask inputs
         self.prev_image = tf.placeholder(tf.float32, shape=(None, None, 3), name='prev_image')
         self.curr_image = tf.placeholder(tf.float32, shape=(None, None, 3), name='curr_image')
 
@@ -139,7 +138,7 @@ class MaskPropagation(object):
 
 
 # test script
-mp = MaskPropagation('training', None, '../pwc_net/model_3000epoch/model_3007.ckpt', debugging=True)
+mp = MaskPropagation('inference', None, '../pwc_net/model_3000epoch/model_3007.ckpt', debugging=True)
 
 img1 = imageio.imread('../pwc_net/test_images/frame1.jpg')
 img2 = imageio.imread('../pwc_net/test_images/frame2.jpg')
