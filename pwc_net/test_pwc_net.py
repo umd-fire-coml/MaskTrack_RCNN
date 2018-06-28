@@ -25,7 +25,6 @@ class Tester(object):
                                         axis=0)  # shape(1, 2, h, w, 3)
 
         self.model = PWCNet()
-        print(self.images_tf[:, 0])
         self.finalflow, self.flow_pyramid, _ \
           = self.model(self.images_tf[:, 0], self.images_tf[:, 1])
         print(self.finalflow.shape)
@@ -40,6 +39,8 @@ class Tester(object):
 
     def test(self):
         flow_pyramid = self.sess.run(self.flow_pyramid)
+        finalflow = self.sess.run(self.finalflow)
+        print(finalflow.shape)
         flow_pyramid = [fpy[0] for fpy in flow_pyramid]
         if not os.path.exists('./test_figure'):
             os.mkdir('./test_figure')

@@ -1,5 +1,6 @@
 from modules import *
 
+
 class PWCNet(object):
 
     def __init__(self, num_levels=6, search_range=4,
@@ -71,7 +72,7 @@ class PWCNet(object):
                     if self.guide:
                         finalflow = self.guided_filter(finalflow, images_0)
                     break
-            import keras.layers as KL
+
             return finalflow, flows, pyramid_0
 
     @property
