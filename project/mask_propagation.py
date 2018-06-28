@@ -1,66 +1,71 @@
-import keras.layers as KL
-import keras.models as KM
+import imageio
+import keras.backend as K
+import numpy as np
+import skimage
 import tensorflow as tf
 
-from mrcnn.model import conv_block, identity_block
 from pwc_net.model import PWCNet
+from pwc_net.flow_utils import vis_flow
 
 
 class MaskPropagation(object):
 
     def __init__(self, mode, config):
+        self.name = 'maskprop'
         self.mode = mode
         self.config = config
 
         assert mode in ['training', 'inference']
 
-        self.tf_model = self._build()
+        self._build()
 
     def _build(self):
         # set up image and mask inputs
-        prev_image = KL.Input(shape=(None, None, 3))
-        curr_image = KL.Input(shape=(None, None, 3))
 
-        scaled_down = KL.Lambda(lambda x: tf.divide(x, 255))
+        self.prev_image = tf.placeholder(tf.float32, shape=(None, None, 3), name='prev_image')
+        self.curr_image = tf.placeholder(tf.float32, shape=(None, None, 3), name='curr_image')
 
-        prev = scaled_down(prev_image)
-        curr = scaled_down(curr_image)
+        def scale_and_expand(v):
+            return tf.expand_dims(tf.expand_dims(v[0], axis=0), axis=0) / 255
 
-        expand = KL.Lambda(lambda x: tf.expand_dims(x[0], axis=0))
-
-        prev = expand(prev)
-        curr = expand(curr)
-
-        def add_history(x):
-            inbound_layer, _, _ = x._keras_history
-            inbound_layer.outbound_nodes = []
-            return x
-
-        inbound_layer, _, _ = prev._keras_history
-        inbound_layer.outbound_nodes = []
-
-        prev = tf.map_fn(add_history, tf.convert_to_tensor([prev, curr]))
+        prev = scale_and_expand(self.prev_image)
+        curr = scale_and_expand(self.curr_image)
 
         # feed images into PWC-Net to get optical flow field
-        flow_field, _, _ = PWCNet()(prev, curr)
-        print(flow_field)
-        # flow_field = flow_field[0]
-        print(flow_field)
+        _, flows, _ = PWCNet()(prev, curr)
+        self.flow_field = flows[-1]
 
         # feed masks and flow field into CNN (conv5)
-        prev_masks = KL.Input(batch_shape=(1, None, None, 1))
+        self.prev_masks = tf.placeholder(tf.float32, shape=(None, None, 1), name='prev_masks')
 
-        x = KL.concatenate([prev_masks, flow_field], axis=3)
-        x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a')
-        x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b')
-        mask_prop_conv = x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
+        # TODO implement in tensorflow
 
-        # return model
-        mp_model = KM.Model(inputs=[prev_image, curr_image, prev_masks],
-                            outputs=[mask_prop_conv])
+        # OLD STUFF IN KERAS
+        # x = KL.concatenate([prev_masks, flow_field], axis=3, name='merge_block_inputs')
+        # x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a')
+        # x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b')
+        # mask_prop_conv = x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
 
-        return mp_model
+        self.propagated_mask = None  # put final tensor here
+
+    def propagate_mask(self, prev_image, curr_image, prev_masks):
+        sess = K.get_session()
+        inputs = {self.prev_image: prev_image,
+                  self.curr_image: curr_image,
+                  self.prev_masks: prev_masks}
+
+        mask = sess.run(self.flow_field, feed_dict=inputs)
+
+        return mask
 
 
 # test script
 mp = MaskPropagation('training', None)
+
+img1 = imageio.imread('../pwc_net/test_images/frame1.jpg')
+img2 = imageio.imread('../pwc_net/test_images/frame2.jpg')
+
+oflow = mp.propagate_mask(img1, img2, np.reshape(np.empty(img1.shape)[:, :, 0], (1080, 1349, 1)))
+print(oflow.shape)
+flow_view = vis_flow(oflow)
+skimage.io.imshow(flow_view)
