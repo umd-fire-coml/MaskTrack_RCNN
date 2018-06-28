@@ -1,4 +1,4 @@
-from .modules import *
+from modules import *
 
 
 class PWCNet(object):
