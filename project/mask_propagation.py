@@ -138,15 +138,16 @@ class MaskPropagation(object):
 
 
 # test script
-mp = MaskPropagation('inference', None, '../pwc_net/model_3000epoch/model_3007.ckpt', debugging=True)
+def test():
+    mp = MaskPropagation('inference', None, '/pwc_net/model_3000epoch/model_3007.ckpt', debugging=True)
 
-img1 = imageio.imread('../pwc_net/test_images/frame1.jpg')
-img2 = imageio.imread('../pwc_net/test_images/frame2.jpg')
+    img1 = imageio.imread('../pwc_net/test_images/frame1.jpg')
+    img2 = imageio.imread('../pwc_net/test_images/frame2.jpg')
 
-oflow = mp.propagate_masks(img1, img2, np.reshape(np.empty(img1.shape)[:, :, 0], (1080, 1349, 1)))
-print(oflow.shape)
-plt.figure(1)
-plt.imshow(oflow[0, :, :, 0])
-plt.figure(2)
-plt.imshow(oflow[0, :, :, 1])
-plt.show()
+    oflow = mp.propagate_masks(img1, img2, np.reshape(np.empty(img1.shape)[:, :, 0], (1080, 1349, 1)))
+    print(oflow.shape)
+    plt.figure(1)
+    plt.imshow(oflow[0, :, :, 0])
+    plt.figure(2)
+    plt.imshow(oflow[0, :, :, 1])
+    plt.show()
