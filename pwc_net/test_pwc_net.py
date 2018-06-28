@@ -41,7 +41,9 @@ class Tester(object):
         flow_pyramid = self.sess.run(self.flow_pyramid)
         finalflow = self.sess.run(self.finalflow)
         print(finalflow.shape)
+        print(len(flow_pyramid[0]))
         flow_pyramid = [fpy[0] for fpy in flow_pyramid]
+        print(len(flow_pyramid[0]))
         if not os.path.exists('./test_figure'):
             os.mkdir('./test_figure')
         fname = '_'.join(re.split('[/.]', self.args.input_images[0])[-3:-1])
@@ -54,7 +56,7 @@ if __name__ == '__main__':
     parser.add_argument('--input_images', type=str, nargs=2, required=True,
                         help='Target images (required)')
     parser.add_argument('--resume', type=str, default=None,
-                        help = 'Learned parameter checkpoint file [None]')
+                        help='Learned parameter checkpoint file [None]')
     parser.add_argument('--device', type=str, default="-1", help='Input utilize gpu-id (-1:cpu)')
     args = parser.parse_args()
 
