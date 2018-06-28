@@ -3,9 +3,25 @@ import keras.backend as K
 import numpy as np
 import skimage
 import tensorflow as tf
+from tensorflow.contrib.slim.nets.resnet_v2 import resnet_v2, resnet_v2_block
 
 from pwc_net.model import PWCNet
 from pwc_net.flow_utils import vis_flow
+
+
+def _conv5(inputs,
+           num_classes=None,
+           is_training=True,
+           global_pool=True,
+           output_stride=None,
+           reuse=tf.AUTO_REUSE,
+           scope='resnet_v2_101'):
+    blocks = [resnet_v2_block('block4', base_depth=512, num_units=3, stride=1), ]
+
+    return resnet_v2(inputs, blocks, num_classes, is_training=is_training,
+                     global_pool=global_pool, output_stride=output_stride,
+                     include_root_block=False,
+                     reuse=reuse, scope=scope)
 
 
 class MaskPropagation(object):
@@ -34,19 +50,15 @@ class MaskPropagation(object):
         # feed images into PWC-Net to get optical flow field
         _, flows, _ = PWCNet()(prev, curr)
         self.flow_field = flows[-1]
-
+        # TODO freeze optical flow layers
         # feed masks and flow field into CNN (conv5)
         self.prev_masks = tf.placeholder(tf.float32, shape=(None, None, 1), name='prev_masks')
 
-        # TODO implement in tensorflow
+        x = tf.concat([self.prev_masks, self.flow_field], axis=0)
 
-        # OLD STUFF IN KERAS
-        # x = KL.concatenate([prev_masks, flow_field], axis=3, name='merge_block_inputs')
-        # x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a')
-        # x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b')
-        # mask_prop_conv = x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
-
-        self.propagated_mask = None  # put final tensor here
+        x, not_sure_what_this_is = _conv5(x)
+        # TODO add training losses
+        self.propagated_mask = x  # put final tensor here
 
     def propagate_mask(self, prev_image, curr_image, prev_masks):
         sess = K.get_session()
@@ -58,6 +70,7 @@ class MaskPropagation(object):
 
         return mask
 
+    # TODO add training section
 
 # test script
 mp = MaskPropagation('training', None)
