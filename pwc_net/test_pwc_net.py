@@ -20,13 +20,14 @@ class Tester(object):
     def _build_graph(self):
         img1_path, img2_path = self.args.input_images
         img1, img2 = map(imageio.imread, (img1_path, img2_path))
+        print(img1.shape)
         self.images = np.array([img1, img2]) / 255.0  # shape(2, h, w, 3)
         self.images_tf = tf.expand_dims(tf.convert_to_tensor(self.images, dtype=tf.float32),
                                         axis=0)  # shape(1, 2, h, w, 3)
 
         self.model = PWCNet()
-        self.finalflow, self.flow_pyramid, _ \
-          = self.model(self.images_tf[:, 0], self.images_tf[:, 1])
+        print(self.images_tf[:, 0])
+        self.finalflow, self.flow_pyramid, _ = self.model(self.images_tf[:, 0], self.images_tf[:, 1])
         print(self.finalflow.shape)
 
         self.saver = tf.train.Saver()
@@ -41,9 +42,9 @@ class Tester(object):
         flow_pyramid = self.sess.run(self.flow_pyramid)
         finalflow = self.sess.run(self.finalflow)
         print(finalflow.shape)
-        print(len(flow_pyramid[0]))
+
         flow_pyramid = [fpy[0] for fpy in flow_pyramid]
-        print(len(flow_pyramid[0]))
+
         if not os.path.exists('./test_figure'):
             os.mkdir('./test_figure')
         fname = '_'.join(re.split('[/.]', self.args.input_images[0])[-3:-1])
