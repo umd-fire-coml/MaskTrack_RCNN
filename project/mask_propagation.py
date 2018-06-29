@@ -83,61 +83,65 @@ class MaskPropagation(object):
         :return: output tensor of the U-Net [batch, w, h, 1]
 
         As a side effect, two instance variables unet_left_wing and unet_right_wing are set with the final output tensors
-        for each layer for the two halves of the U.
+        for each layer of the two halves of the U.
         """
         with tf.variable_scope('unet'):
             input = x
 
             x = TL.conv2d(x, 64, (3, 3), activation=conv_act, name='L1_conv1')
-            x = TL.conv2d(x, 64, (3, 3), activation=conv_act)
+            x = TL.conv2d(x, 64, (3, 3), activation=conv_act, name='L2_conv2')
             L1 = x
 
-            x = TL.max_pooling2d(x, (2, 2), (2, 2))
-            x = TL.conv2d(x, 128, (3, 3), activation=conv_act)
-            x = TL.conv2d(x, 128, (3, 3), activation=conv_act)
+            x = TL.max_pooling2d(x, (2, 2), (2, 2), name='L2_pool')
+            x = TL.conv2d(x, 128, (3, 3), activation=conv_act, name='L2_conv1')
+            x = TL.conv2d(x, 128, (3, 3), activation=conv_act, name='L2_conv2')
             L2 = x
 
-            x = TL.max_pooling2d(x, (2, 2), (2, 2))
-            x = TL.conv2d(x, 256, (3, 3), activation=conv_act)
-            x = TL.conv2d(x, 256, (3, 3), activation=conv_act)
+            x = TL.max_pooling2d(x, (2, 2), (2, 2), name='L3_pool')
+            x = TL.conv2d(x, 256, (3, 3), activation=conv_act, name='L3_conv1')
+            x = TL.conv2d(x, 256, (3, 3), activation=conv_act, name='L3_conv2')
             L3 = x
 
-            x = TL.max_pooling2d(x, (2, 2), (2, 2))
-            x = TL.conv2d(x, 512, (3, 3), activation=conv_act)
-            x = TL.conv2d(x, 512, (3, 3), activation=conv_act)
+            x = TL.max_pooling2d(x, (2, 2), (2, 2), name='L4_pool')
+            x = TL.conv2d(x, 512, (3, 3), activation=conv_act, name='L4_conv1')
+            x = TL.conv2d(x, 512, (3, 3), activation=conv_act, name='L4_conv2')
             L4 = x
 
-            x = TL.max_pooling2d(x, (2, 2), (2, 2))
-            x = TL.conv2d(x, 1024, (3, 3), activation=conv_act)
-            x = TL.conv2d(x, 1024, (3, 3), activation=conv_act)
+            x = TL.max_pooling2d(x, (2, 2), (2, 2), name='L5_pool')
+            x = TL.conv2d(x, 1024, (3, 3), activation=conv_act, name='L5_conv1')
+            x = TL.conv2d(x, 1024, (3, 3), activation=conv_act, name='L5_conv2')
             L5 = x
 
-            x = TL.conv2d_transpose(x, 1024, (2, 2), strides=(2, 2), activation=deconv_act)
-            x = tf.concat([L4, tf.image.resize_images(x, tf.shape(L4)[1:3])], axis=3)
-            x = TL.conv2d(x, 512, (3, 3), activation=conv_act)
-            x = TL.conv2d(x, 512, (3, 3), activation=conv_act)
+            x = TL.conv2d_transpose(x, 1024, (2, 2), strides=(2, 2), activation=deconv_act, name='P4_upconv')
+            x = tf.concat([L4, tf.image.resize_images(x, tf.shape(L4)[1:3], name='P4_resize')],
+                          axis=3, name='P4_concat')
+            x = TL.conv2d(x, 512, (3, 3), activation=conv_act, name='P4_conv1')
+            x = TL.conv2d(x, 512, (3, 3), activation=conv_act, name='P4_conv2')
             P4 = x
 
-            x = TL.conv2d_transpose(x, 512, (2, 2), strides=(2, 2), activation=deconv_act)
-            x = tf.concat([L3, tf.image.resize_images(x, tf.shape(L3)[1:3])], axis=3)
-            x = TL.conv2d(x, 256, (3, 3), activation=conv_act)
-            x = TL.conv2d(x, 256, (3, 3), activation=conv_act)
+            x = TL.conv2d_transpose(x, 512, (2, 2), strides=(2, 2), activation=deconv_act, name='P3_upconv')
+            x = tf.concat([L3, tf.image.resize_images(x, tf.shape(L3)[1:3], name='P3_resize')],
+                          axis=3, name='P3_concat')
+            x = TL.conv2d(x, 256, (3, 3), activation=conv_act, name='P3_conv1')
+            x = TL.conv2d(x, 256, (3, 3), activation=conv_act, name='P3_conv2')
             P3 = x
 
-            x = TL.conv2d_transpose(x, 256, (2, 2), strides=(2, 2), activation=deconv_act)
-            x = tf.concat([L2, tf.image.resize_images(x, tf.shape(L2)[1:3])], axis=3)
-            x = TL.conv2d(x, 128, (3, 3), activation=conv_act)
-            x = TL.conv2d(x, 128, (3, 3), activation=conv_act)
+            x = TL.conv2d_transpose(x, 256, (2, 2), strides=(2, 2), activation=deconv_act, name='P2_upconv')
+            x = tf.concat([L2, tf.image.resize_images(x, tf.shape(L2)[1:3], name='P2_resize')],
+                          axis=3, name='P2_concat')
+            x = TL.conv2d(x, 128, (3, 3), activation=conv_act, name='P2_conv1')
+            x = TL.conv2d(x, 128, (3, 3), activation=conv_act, name='P2_conv2')
             P2 = x
 
-            x = TL.conv2d_transpose(x, 128, (2, 2), strides=(2, 2), activation=deconv_act)
-            x = tf.concat([L1, tf.image.resize_images(x, tf.shape(L1)[1:3])], axis=3)
-            x = TL.conv2d(x, 64, (3, 3), activation=conv_act)
-            x = TL.conv2d(x, 64, (3, 3), activation=conv_act)
+            x = TL.conv2d_transpose(x, 128, (2, 2), strides=(2, 2), activation=deconv_act, name='P1_upconv')
+            x = tf.concat([L1, tf.image.resize_images(x, tf.shape(L1)[1:3], name='P1_resize')],
+                          axis=3, name='P1_concat')
+            x = TL.conv2d(x, 64, (3, 3), activation=conv_act, name='P1_conv1')
+            x = TL.conv2d(x, 64, (3, 3), activation=conv_act, name='P1_conv2')
             P1 = x
 
-            x = tf.image.resize_images(x, tf.shape(input)[1:3])
-            x = TL.conv2d(x, 1, (1, 1), activation=tf.sigmoid)
+            x = tf.image.resize_images(x, tf.shape(input)[1:3], name='P0_resize')
+            x = TL.conv2d(x, 1, (1, 1), activation=tf.sigmoid, name='P0_conv')
 
             self.unet_left_wing = [L1, L2, L3, L4, L5]
             self.unet_right_wing = [P4, P3, P2, P1]
