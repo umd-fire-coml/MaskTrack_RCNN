@@ -186,7 +186,7 @@ class MaskPropagation(object):
 
         return mask
 
-    def propagate_mask(self, prev_image, curr_image, prev_mask):
+    def get_propagated_mask(self, prev_image, curr_image, prev_mask):
         """
         Propagates the masks through the model to get the predicted mask.
         :param prev_image: starting image for flow at time t-1 [w, h, 3]
@@ -217,20 +217,22 @@ class MaskPropagation(object):
 
 # test script
 def test():
-    MODEL_PATH = 'C:/Users/tmthy/Documents/prog/python3/coml/MaskTrack_RCNN/pwc_net/model_3000epoch/model_3007.ckpt'
-    mp = MaskPropagation('training', None, MODEL_PATH, debugging=True, isolated=False)
+    root_dir = 'C:/Users/tmthy/Documents/prog/python3/coml/MaskTrack_RCNN/'
+    model_path = os.path.join(root_dir, '/pwc_net/model_3000epoch/model_3007.ckpt')
+    mp = MaskPropagation('training', None, model_path, debugging=True, isolated=False)
 
-    img1 = imageio.imread('../pwc_net/test_images/frame1.jpg')
-    img2 = imageio.imread('../pwc_net/test_images/frame2.jpg')
+    img1 = imageio.imread(os.path.join(root_dir, 'pwc_net/test_images/frame1.jpg'))
+    img2 = imageio.imread(os.path.join(root_dir, 'pwc_net/test_images/frame2.jpg'))
 
     oflow = mp.get_flow_field(img1, img2)
     plt.figure(1)
+    plt.subplot(211)
     plt.imshow(oflow[0, :, :, 0])
-    plt.figure(2)
+    plt.subplot(212)
     plt.imshow(oflow[0, :, :, 1])
     plt.show()
 
-    mp.propagate_mask(img1, img2, np.reshape(np.empty(img1.shape)[:, :, 0], (1080, 1349, 1)))
+    mp.get_propagated_mask(img1, img2, np.reshape(np.empty(img1.shape)[:, :, 0], (1080, 1349, 1)))
 
     mp.train_batch(img1, img2, np.empty((1080, 1349, 1)), np.empty((1080, 1349, 1)))
 
