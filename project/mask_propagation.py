@@ -63,7 +63,7 @@ class MaskPropagation(object):
         self.propagated_masks = x
 
         if self.mode == 'training':
-            self.loss = tf.reduce_sum(tf.subtract(self.gt_mask, self.propagated_masks))
+            self.loss = tf.losses.mean_squared_error(self.gt_mask, self.propagated_masks)
             trainables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='unet')
             self.optimizer = tf.train.AdadeltaOptimizer().minimize(self.loss, var_list=trainables)
 
