@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from tensorflow import layers as TL
+from tensorflow import data as TD
 
 from pwc_net.model import PWCNet
 
@@ -58,8 +59,8 @@ class MaskPropagation(object):
         self.flow_field = tf.image.resize_bilinear(x, tf.shape(prev)[1:3])
 
         # feed masks and flow field into CNN
-        self.prev_mask = tf.placeholder(tf.float32, shape=(None, None, None, 1), name='prev_masks')
-        x = tf.concat([self.prev_mask, self.flow_field], axis=3)
+        self.curr_mask = tf.placeholder(tf.float32, shape=(None, None, None, 1), name='prev_masks')
+        x = tf.concat([self.curr_mask, self.flow_field], axis=3)
 
         x = self._build_unet(x)
         self.propagated_masks = x
@@ -79,16 +80,15 @@ class MaskPropagation(object):
     def _build_unet(self, x, conv_act=tf.nn.relu6, deconv_act=None):
         """
         Builds the mask propagation network proper (based on the u-Net architecture).
-        :param x: input tensor of the previous mask and flow field concatenated [batch, w, h, 1+2]
+        :param x: input tensor of the mask and flow field concatenated [batch, w, h, 1+2]
         :param conv_act: activation function for the convolution layers
         :param deconv_act: activation function for the transposed convolution layers
         :return: output tensor of the U-Net [batch, w, h, 1]
-
         As a side effect, two instance variables unet_left_wing and unet_right_wing are set with the final output tensors
         for each layer of the two halves of the U.
         """
         with tf.variable_scope('unet'):
-            input = x
+            _input = x
 
             x = TL.conv2d(x, 64, (3, 3), activation=conv_act, name='L1_conv1')
             x = TL.conv2d(x, 64, (3, 3), activation=conv_act, name='L2_conv2')
@@ -142,7 +142,7 @@ class MaskPropagation(object):
             x = TL.conv2d(x, 64, (3, 3), activation=conv_act, name='P1_conv2')
             P1 = x
 
-            x = tf.image.resize_images(x, tf.shape(input)[1:3], name='P0_resize')
+            x = tf.image.resize_images(x, tf.shape(_input)[1:3], name='P0_resize')
             x = TL.conv2d(x, 1, (1, 1), activation=tf.sigmoid, name='P0_conv')
 
             self.unet_left_wing = [L1, L2, L3, L4, L5]
@@ -152,25 +152,58 @@ class MaskPropagation(object):
 
     # TODO add multi-epoch, multi-step train() method that uses a generator pattern to load images to train_single()
 
-    def train_batch(self, prev_images, curr_images, prev_masks, gt_masks):
+    def train_batch(self, prev_images, curr_images, curr_masks, gt_masks):
         """
         Trains the mask propagation network on a single batch of inputs.
         :param prev_images: previous images at time t-1 [batch, w, h, 3]
         :param curr_images: current images at time t [batch, w, h, 3]
-        :param prev_masks: previous (correct) masks at time t-1 [batch, w, h, 1]
-        :param gt_masks: ground truth next masks at time t [batch, w, h, 1]
+        :param curr_masks: the masks at time t [batch, w, h, 1]
+        :param gt_masks: ground truth next masks at time t+1 [batch, w, h, 1]
         :return: batch loss of the predicted masks against the provided ground truths
         """
         assert self.mode == 'training'
 
         inputs = {self.prev_image: prev_images,
                   self.curr_image: curr_images,
-                  self.prev_mask: prev_masks,
+                  self.curr_mask: curr_masks,
                   self.gt_mask: gt_masks}
 
         _, loss = self.sess.run([self.optimizer, self.loss], feed_dict=inputs)
 
         return loss
+
+    def train_multi_batch(self, generator, steps, batch_size, output_types, output_shapes=None):
+        """
+        Trains the mask propagation network on multiple batches. (Essentially an epoch.)
+        :param generator: A generator or an instance of Sequence (keras.utils.Sequence) object in order to avoid duplicate data when using multiprocessing. 
+        :param steps: Number of times to call the generator. (Number of steps in this "epoch".)
+        :param batch_size: A tf.int64 scalar tf.Tensor, representing the number of consecutive elements of the generator to combine in a single batch.
+        :param output_types: output_types: A nested structure of tf.DType objects corresponding to each component of an element yielded by generator.
+        :param output_shapes: (Optional.) A nested structure of tf.TensorShape objects corresponding to each component of an element yielded by generator.
+        :return: a list of batch losses of the predicted masks against the generated ground truths
+        """
+        assert self.mode == 'training'
+
+        dataset = TD.Dataset().batch(batch_size).from_generator(generator,
+                                                   output_types=output_types, 
+                                                   output_shapes=output_shapes)
+        _iter = dataset.make_initializable_iterator()
+        element = _iter.get_next()
+        self.sess.run(_iter.initializer)
+        # print(sess.run(el))
+        # print(sess.run(el))
+        # print(sess.run(el))
+
+        # inputs = {self.prev_image: prev_images,
+        #           self.curr_image: curr_images,
+        #           self.curr_mask: curr_masks,
+        #           self.gt_mask: gt_masks}
+
+        losses = [None] * steps
+
+        #_, loss = self.sess.run([self.optimizer, self.loss], feed_dict=inputs)
+
+        return losses
 
     def get_flow_field(self, prev_image, curr_image):
         """
@@ -186,17 +219,17 @@ class MaskPropagation(object):
 
         return mask
 
-    def get_propagated_mask(self, prev_image, curr_image, prev_mask):
+    def get_propagated_mask(self, prev_image, curr_image, curr_mask):
         """
         Propagates the masks through the model to get the predicted mask.
         :param prev_image: starting image for flow at time t-1 [w, h, 3]
         :param curr_image: ending image for flow at time t [w, h, 3]
-        :param prev_mask: previous (correct) mask at time t-1 [w, h, 1]
-        :return: predicted/propagated mask at time t [1, w, h, 1]
+        :param curr_mask: the mask at time t [w, h, 1]
+        :return: predicted/propagated mask at time t+1 [1, w, h, 1]
         """
         inputs = {self.prev_image: np.expand_dims(prev_image, 0),
                   self.curr_image: np.expand_dims(curr_image, 0),
-                  self.prev_mask: np.expand_dims(prev_mask, 0)}
+                  self.curr_mask: np.expand_dims(curr_mask, 0)}
 
         mask = self.sess.run(self.propagated_masks, feed_dict=inputs)
 
@@ -235,4 +268,3 @@ def test():
     mp.get_propagated_mask(img1, img2, np.reshape(np.empty(img1.shape)[:, :, 0], (1080, 1349, 1)))
 
     mp.train_batch(img1, img2, np.empty((1080, 1349, 1)), np.empty((1080, 1349, 1)))
-
