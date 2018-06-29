@@ -1,3 +1,5 @@
+import os
+
 import imageio
 import keras.backend as K
 import matplotlib.pyplot as plt
@@ -10,12 +12,13 @@ from pwc_net.model import PWCNet
 
 class MaskPropagation(object):
 
-    def __init__(self, mode, config, weights_path, debugging=False, isolated=False):
+    def __init__(self, mode, config, weights_path, model_dir='./logs', debugging=False, isolated=False):
         """
         Creates and builds the mask propagation network.
         :param mode: either 'training' or 'inference'
         :param config: not used atm
         :param weights_path: path to the weights for pwc-net
+        :param model_dir: directory to save/load logs and model checkpoints
         :param debugging: whether to include extra print operations
         :param isolated: whether this is the only network running
         """
@@ -23,6 +26,7 @@ class MaskPropagation(object):
         self.mode = mode
         self.config = config
         self.weights_path = weights_path
+        self.model_dir = model_dir
         self.debugging = debugging
 
         if isolated:
@@ -39,11 +43,11 @@ class MaskPropagation(object):
         Builds the computation graph for the mask propagation network.
         """
         # set up image and mask inputs
-        self.prev_image = tf.placeholder(tf.float32, shape=(1, None, None, 3), name='prev_image')
-        self.curr_image = tf.placeholder(tf.float32, shape=(1, None, None, 3), name='curr_image')
+        self.prev_image = tf.placeholder(tf.float32, shape=(None, None, None, 3), name='prev_image')
+        self.curr_image = tf.placeholder(tf.float32, shape=(None, None, None, 3), name='curr_image')
 
         if self.mode == 'training':
-            self.gt_mask = tf.placeholder(tf.float32, shape=(1, None, None, 1), name='gt_masks')
+            self.gt_mask = tf.placeholder(tf.float32, shape=(None, None, None, 1), name='gt_masks')
 
         prev = tf.divide(self.prev_image, 255)
         curr = tf.divide(self.curr_image, 255)
@@ -53,13 +57,11 @@ class MaskPropagation(object):
 
         self.flow_field = tf.image.resize_bilinear(x, tf.shape(prev)[1:3])
 
-        # feed masks and flow field into CNN (conv5)
-        self.prev_mask = tf.placeholder(tf.float32, shape=(1, None, None, 1), name='prev_masks')
-
+        # feed masks and flow field into CNN
+        self.prev_mask = tf.placeholder(tf.float32, shape=(None, None, None, 1), name='prev_masks')
         x = tf.concat([self.prev_mask, self.flow_field], axis=3)
 
         x = self._build_unet(x)
-
         self.propagated_masks = x
 
         if self.mode == 'training':
@@ -150,21 +152,21 @@ class MaskPropagation(object):
 
     # TODO add multi-epoch, multi-step train() method that uses a generator pattern to load images to train_single()
 
-    def train_single(self, prev_image, curr_image, prev_mask, gt_mask):
+    def train_batch(self, prev_images, curr_images, prev_masks, gt_masks):
         """
-        Trains the mask propagation network on a single set of input.
-        :param prev_image: previous image at time t-1 [w, h, 3]
-        :param curr_image: current image at time t [w, h, 3]
-        :param prev_mask: previous (correct) mask at time t-1 [w, h, 1]
-        :param gt_mask: ground truth next mask at time t [w, h, 1]
-        :return: loss of the predicted mask against the provided ground truth
+        Trains the mask propagation network on a single batch of inputs.
+        :param prev_images: previous images at time t-1 [batch, w, h, 3]
+        :param curr_images: current images at time t [batch, w, h, 3]
+        :param prev_masks: previous (correct) masks at time t-1 [batch, w, h, 1]
+        :param gt_masks: ground truth next masks at time t [batch, w, h, 1]
+        :return: batch loss of the predicted masks against the provided ground truths
         """
         assert self.mode == 'training'
 
-        inputs = {self.prev_image: np.expand_dims(prev_image, 0),
-                  self.curr_image: np.expand_dims(curr_image, 0),
-                  self.prev_mask: np.expand_dims(prev_mask, 0),
-                  self.gt_mask: np.expand_dims(gt_mask, 0)}
+        inputs = {self.prev_image: prev_images,
+                  self.curr_image: curr_images,
+                  self.prev_mask: prev_masks,
+                  self.gt_mask: gt_masks}
 
         _, loss = self.sess.run([self.optimizer, self.loss], feed_dict=inputs)
 
@@ -175,7 +177,7 @@ class MaskPropagation(object):
         Evaluates the model to get the flow field between the two images.
         :param prev_image: starting image for flow [w, h, 3]
         :param curr_image: ending image for flow [w, h, 3]
-        :return: flow field for the images [1, w, h, 2]
+        :return: flow field for the images [batch, w, h, 2]
         """
         inputs = {self.prev_image: np.expand_dims(prev_image, 0),
                   self.curr_image: np.expand_dims(curr_image, 0)}
@@ -184,25 +186,33 @@ class MaskPropagation(object):
 
         return mask
 
-    def propagate_masks(self, prev_image, curr_image, prev_masks):
+    def propagate_mask(self, prev_image, curr_image, prev_mask):
         """
         Propagates the masks through the model to get the predicted mask.
         :param prev_image: starting image for flow at time t-1 [w, h, 3]
         :param curr_image: ending image for flow at time t [w, h, 3]
-        :param prev_masks: previous (correct) mask at time t-1 [w, h, 1]
+        :param prev_mask: previous (correct) mask at time t-1 [w, h, 1]
         :return: predicted/propagated mask at time t [1, w, h, 1]
         """
         inputs = {self.prev_image: np.expand_dims(prev_image, 0),
                   self.curr_image: np.expand_dims(curr_image, 0),
-                  self.prev_mask: np.expand_dims(prev_masks, 0)}
+                  self.prev_mask: np.expand_dims(prev_mask, 0)}
 
         mask = self.sess.run(self.propagated_masks, feed_dict=inputs)
 
         return mask
 
-    # TODO add save_weights method (takes a model_dir) using tf.train.Saver()
+    def save_weights(self, filename):
+        weights_pathname = os.path.join(self.model_dir, filename)
 
-    # TODO add load_weights methods using tf.train.Saver()
+        # TODO implement saving all weights
+        pass
+
+    def load_weights(self, filename):
+        weights_pathname = os.path.join(self.model_dir, filename)
+
+        # TODO implement loading all weights
+        pass
 
 
 # test script
@@ -220,7 +230,7 @@ def test():
     plt.imshow(oflow[0, :, :, 1])
     plt.show()
 
-    mp.propagate_masks(img1, img2, np.reshape(np.empty(img1.shape)[:, :, 0], (1080, 1349, 1)))
+    mp.propagate_mask(img1, img2, np.reshape(np.empty(img1.shape)[:, :, 0], (1080, 1349, 1)))
 
-    mp.train_single(img1, img2, np.empty((1080, 1349, 1)), np.empty((1080, 1349, 1)))
+    mp.train_batch(img1, img2, np.empty((1080, 1349, 1)), np.empty((1080, 1349, 1)))
 
