@@ -3,161 +3,220 @@ import keras.backend as K
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib import slim
-from tensorflow.contrib.slim.python.slim.nets import resnet_utils
-from tensorflow.contrib.slim.python.slim.nets.resnet_v2 import resnet_v2_block, bottleneck
+from tensorflow import layers as TL
 
 from pwc_net.model import PWCNet
 
 
 class MaskPropagation(object):
 
-    def __init__(self, mode, config, weights_path, debugging=False):
+    def __init__(self, mode, config, weights_path, debugging=False, isolated=False):
+        """
+        Creates and builds the mask propagation network.
+        :param mode: either 'training' or 'inference'
+        :param config: not used atm
+        :param weights_path: path to the weights for pwc-net
+        :param debugging: whether to include extra print operations
+        :param isolated: whether this is the only network running
+        """
         self.name = 'maskprop'
         self.mode = mode
         self.config = config
         self.weights_path = weights_path
         self.debugging = debugging
 
+        if isolated:
+            self.sess = tf.Session(tf.ConfigProto())
+        else:
+            self.sess = K.get_session()
+
         assert mode in ['training', 'inference']
 
         self._build()
 
     def _build(self):
-
+        """
+        Builds the computation graph for the mask propagation network.
+        """
         # set up image and mask inputs
-        self.prev_image = tf.placeholder(tf.float32, shape=(None, None, 3), name='prev_image')
-        self.curr_image = tf.placeholder(tf.float32, shape=(None, None, 3), name='curr_image')
+        self.prev_image = tf.placeholder(tf.float32, shape=(1, None, None, 3), name='prev_image')
+        self.curr_image = tf.placeholder(tf.float32, shape=(1, None, None, 3), name='curr_image')
 
-        def scale_and_expand(v):
-            return tf.divide(tf.expand_dims(v, axis=0), 255)
+        if self.mode == 'training':
+            self.gt_mask = tf.placeholder(tf.float32, shape=(1, None, None, 1), name='gt_masks')
 
-        prev = scale_and_expand(self.prev_image)
-        curr = scale_and_expand(self.curr_image)
+        prev = tf.divide(self.prev_image, 255)
+        curr = tf.divide(self.curr_image, 255)
 
         # feed images into PWC-Net to get optical flow field
         x, _, _ = PWCNet()(prev, curr)
 
         self.flow_field = tf.image.resize_bilinear(x, tf.shape(prev)[1:3])
 
-        # TODO freeze optical flow layers to not train
-
         # feed masks and flow field into CNN (conv5)
-        self.prev_masks = tf.placeholder(tf.float32, shape=(None, None, 1), name='prev_masks')
-        x = tf.expand_dims(self.prev_masks, axis=0)
+        self.prev_mask = tf.placeholder(tf.float32, shape=(1, None, None, 1), name='prev_masks')
 
-        x = tf.concat([x, self.flow_field], axis=3)
+        x = tf.concat([self.prev_mask, self.flow_field], axis=3)
 
-        x, _ = self._build_mp_conv5(x, is_training=self.mode == 'training')
+        x = self._build_unet(x)
 
-        x = tf.layers.conv2d(x, 1, (3, 3), strides=(1, 1), padding='same', activation=tf.sigmoid)
+        self.propagated_masks = x
 
-        x = tf.Print(x, [tf.shape(x)])
-
-        # TODO add training losses
-        self.propagated_mask = x
+        if self.mode == 'training':
+            self.loss = tf.reduce_sum(tf.subtract(self.gt_mask, self.propagated_masks))
+            trainables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='unet')
+            self.optimizer = tf.train.AdadeltaOptimizer().minimize(self.loss, var_list=trainables)
 
         # load weights for optical flow model from disk
-        tf.global_variables_initializer()
+        tf.global_variables_initializer().run(session=self.sess)
 
-        sess = K.get_session()
         saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='pwcnet'))
 
-        saver.restore(sess, self.weights_path)
+        saver.restore(self.sess, self.weights_path)
 
-    # The full preactivation 'v2' ResNet variant implemented in this module was
-    # introduced by:
-    # [2] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
-    #     Identity Mappings in Deep Residual Networks. arXiv: 1603.05027
-    # NOTE: The pre-activation variant does not have batch
-    # normalization or activation functions in the residual unit output. See [2].
-    def _build_mp_conv5(self, inputs,
-                        is_training=True,
-                        output_stride=None,
-                        reuse=None):
-        """Generator for v2 (preactivation) ResNet 101 model conv5 section.
-        Args:
-          inputs: A tensor of size [batch, height_in, width_in, channels].
-          is_training: whether batch_norm layers are in training mode.
-          output_stride: If None, then the output will be computed at the nominal
-            network stride. If output_stride is not None, it specifies the requested
-            ratio of input to output spatial resolution.
-          reuse: whether or not the network and its variables should be reused. To be
-            able to reuse 'scope' must be given.
-        Returns:
-          net: A rank-4 tensor of size [batch, height_out, width_out, channels_out].
-            If global_pool is False, then height_out and width_out are reduced by a
-            factor of output_stride compared to the respective height_in and width_in,
-            else both height_out and width_out equal one. If num_classes is 0 or None,
-            then net is the output of the last ResNet block, potentially after global
-            average pooling. If num_classes is a non-zero integer, net contains the
-            pre-softmax activations.
-          end_points: A dictionary from components of the network to the corresponding
-            activation.
-        Raises:
-          ValueError: If the target output_stride is not valid.
+    def _build_unet(self, x, conv_act=tf.nn.relu6, deconv_act=None):
         """
+        Builds the mask propagation network proper (based on the u-Net architecture).
+        :param x: input tensor of the previous mask and flow field concatenated [batch, w, h, 1+2]
+        :param conv_act: activation function for the convolution layers
+        :param deconv_act: activation function for the transposed convolution layers
+        :return: output tensor of the U-Net [batch, w, h, 1]
 
-        # blocks: A list of length equal to the number of ResNet blocks. Each element
-        # is a resnet_utils.Block object describing the units in the block.
-        blocks = [
-            resnet_v2_block('block4', base_depth=512, num_units=3, stride=1),
-        ]
+        As a side effect, two instance variables unet_left_wing and unet_right_wing are set with the final output tensors
+        for each layer for the two halves of the U.
+        """
+        with tf.variable_scope('unet'):
+            input = x
 
-        scope = 'resnet_v2_101'
+            x = TL.conv2d(x, 64, (3, 3), activation=conv_act, name='L1_conv1')
+            x = TL.conv2d(x, 64, (3, 3), activation=conv_act)
+            L1 = x
 
-        with tf.variable_scope(scope, 'resnet_v2', [inputs], reuse=reuse) as sc:
-            end_points_collection = sc.original_name_scope + '_end_points'
-            with slim.arg_scope([slim.conv2d, bottleneck,
-                                 resnet_utils.stack_blocks_dense],
-                                outputs_collections=end_points_collection):
-                with slim.arg_scope([slim.batch_norm], is_training=is_training):
-                    net = inputs
-                    net = resnet_utils.stack_blocks_dense(net, blocks, output_stride)
+            x = TL.max_pooling2d(x, (2, 2), (2, 2))
+            x = TL.conv2d(x, 128, (3, 3), activation=conv_act)
+            x = TL.conv2d(x, 128, (3, 3), activation=conv_act)
+            L2 = x
 
-                    # batch normalization or activation functions (see [2])
+            x = TL.max_pooling2d(x, (2, 2), (2, 2))
+            x = TL.conv2d(x, 256, (3, 3), activation=conv_act)
+            x = TL.conv2d(x, 256, (3, 3), activation=conv_act)
+            L3 = x
 
-                    # Convert end_points_collection into a dictionary of end_points.
-                    end_points = slim.utils.convert_collection_to_dict(
-                        end_points_collection)
+            x = TL.max_pooling2d(x, (2, 2), (2, 2))
+            x = TL.conv2d(x, 512, (3, 3), activation=conv_act)
+            x = TL.conv2d(x, 512, (3, 3), activation=conv_act)
+            L4 = x
 
-                    return net, end_points
+            x = TL.max_pooling2d(x, (2, 2), (2, 2))
+            x = TL.conv2d(x, 1024, (3, 3), activation=conv_act)
+            x = TL.conv2d(x, 1024, (3, 3), activation=conv_act)
+            L5 = x
 
-    def get_flow_field(self, prev_image, curr_image, prev_masks):
-        sess = K.get_session()
+            x = TL.conv2d_transpose(x, 1024, (2, 2), strides=(2, 2), activation=deconv_act)
+            x = tf.concat([L4, tf.image.resize_images(x, tf.shape(L4)[1:3])], axis=3)
+            x = TL.conv2d(x, 512, (3, 3), activation=conv_act)
+            x = TL.conv2d(x, 512, (3, 3), activation=conv_act)
+            P4 = x
 
-        inputs = {self.prev_image: prev_image,
-                  self.curr_image: curr_image}
+            x = TL.conv2d_transpose(x, 512, (2, 2), strides=(2, 2), activation=deconv_act)
+            x = tf.concat([L3, tf.image.resize_images(x, tf.shape(L3)[1:3])], axis=3)
+            x = TL.conv2d(x, 256, (3, 3), activation=conv_act)
+            x = TL.conv2d(x, 256, (3, 3), activation=conv_act)
+            P3 = x
 
-        mask = sess.run(self.flow_field, feed_dict=inputs)
+            x = TL.conv2d_transpose(x, 256, (2, 2), strides=(2, 2), activation=deconv_act)
+            x = tf.concat([L2, tf.image.resize_images(x, tf.shape(L2)[1:3])], axis=3)
+            x = TL.conv2d(x, 128, (3, 3), activation=conv_act)
+            x = TL.conv2d(x, 128, (3, 3), activation=conv_act)
+            P2 = x
+
+            x = TL.conv2d_transpose(x, 128, (2, 2), strides=(2, 2), activation=deconv_act)
+            x = tf.concat([L1, tf.image.resize_images(x, tf.shape(L1)[1:3])], axis=3)
+            x = TL.conv2d(x, 64, (3, 3), activation=conv_act)
+            x = TL.conv2d(x, 64, (3, 3), activation=conv_act)
+            P1 = x
+
+            x = tf.image.resize_images(x, tf.shape(input)[1:3])
+            x = TL.conv2d(x, 1, (1, 1), activation=tf.sigmoid)
+
+            self.unet_left_wing = [L1, L2, L3, L4, L5]
+            self.unet_right_wing = [P4, P3, P2, P1]
+
+            return x
+
+    # TODO add multi-epoch, multi-step train() method that uses a generator pattern to load images to train_single()
+
+    def train_single(self, prev_image, curr_image, prev_mask, gt_mask):
+        """
+        Trains the mask propagation network on a single set of input.
+        :param prev_image: previous image at time t-1 [w, h, 3]
+        :param curr_image: current image at time t [w, h, 3]
+        :param prev_mask: previous (correct) mask at time t-1 [w, h, 1]
+        :param gt_mask: ground truth next mask at time t [w, h, 1]
+        :return: loss of the predicted mask against the provided ground truth
+        """
+        assert self.mode == 'training'
+
+        inputs = {self.prev_image: np.expand_dims(prev_image, 0),
+                  self.curr_image: np.expand_dims(curr_image, 0),
+                  self.prev_mask: np.expand_dims(prev_mask, 0),
+                  self.gt_mask: np.expand_dims(gt_mask, 0)}
+
+        _, loss = self.sess.run([self.optimizer, self.loss], feed_dict=inputs)
+
+        return loss
+
+    def get_flow_field(self, prev_image, curr_image):
+        """
+        Evaluates the model to get the flow field between the two images.
+        :param prev_image: starting image for flow [w, h, 3]
+        :param curr_image: ending image for flow [w, h, 3]
+        :return: flow field for the images [1, w, h, 2]
+        """
+        inputs = {self.prev_image: np.expand_dims(prev_image, 0),
+                  self.curr_image: np.expand_dims(curr_image, 0)}
+
+        mask = self.sess.run(self.flow_field, feed_dict=inputs)
 
         return mask
 
     def propagate_masks(self, prev_image, curr_image, prev_masks):
-        sess = K.get_session()
+        """
+        Propagates the masks through the model to get the predicted mask.
+        :param prev_image: starting image for flow at time t-1 [w, h, 3]
+        :param curr_image: ending image for flow at time t [w, h, 3]
+        :param prev_masks: previous (correct) mask at time t-1 [w, h, 1]
+        :return: predicted/propagated mask at time t [1, w, h, 1]
+        """
+        inputs = {self.prev_image: np.expand_dims(prev_image, 0),
+                  self.curr_image: np.expand_dims(curr_image, 0),
+                  self.prev_mask: np.expand_dims(prev_masks, 0)}
 
-        inputs = {self.prev_image: prev_image,
-                  self.curr_image: curr_image,
-                  self.prev_masks: prev_masks}
-
-        mask = sess.run(self.propagated_mask, feed_dict=inputs)
+        mask = self.sess.run(self.propagated_masks, feed_dict=inputs)
 
         return mask
 
-    # TODO add training sections
+    # TODO add save_weights method (takes a model_dir) using tf.train.Saver()
+
+    # TODO add load_weights methods using tf.train.Saver()
 
 
 # test script
 def test():
-    mp = MaskPropagation('inference', None, '/pwc_net/model_3000epoch/model_3007.ckpt', debugging=True)
+    MODEL_PATH = 'C:/Users/tmthy/Documents/prog/python3/coml/MaskTrack_RCNN/pwc_net/model_3000epoch/model_3007.ckpt'
+    mp = MaskPropagation('training', None, MODEL_PATH, debugging=True, isolated=False)
 
     img1 = imageio.imread('../pwc_net/test_images/frame1.jpg')
     img2 = imageio.imread('../pwc_net/test_images/frame2.jpg')
 
-    oflow = mp.propagate_masks(img1, img2, np.reshape(np.empty(img1.shape)[:, :, 0], (1080, 1349, 1)))
-    print(oflow.shape)
+    oflow = mp.get_flow_field(img1, img2)
     plt.figure(1)
     plt.imshow(oflow[0, :, :, 0])
     plt.figure(2)
     plt.imshow(oflow[0, :, :, 1])
     plt.show()
+
+    mp.propagate_masks(img1, img2, np.reshape(np.empty(img1.shape)[:, :, 0], (1080, 1349, 1)))
+
+    mp.train_single(img1, img2, np.empty((1080, 1349, 1)), np.empty((1080, 1349, 1)))
+
