@@ -13,27 +13,32 @@ from pwc_net.model import PWCNet
 
 class MaskPropagation(object):
 
-    def __init__(self, mode, config, weights_path, model_dir='./logs', debugging=False, isolated=False):
+    def __init__(self, mode, config, pwc_net_weights_path, model_dir='./logs', debugging=False, isolated=False,
+                 optimizer=tf.train.AdadeltaOptimizer(), loss_function=tf.losses.sigmoid_cross_entropy):
         """
         Creates and builds the mask propagation network.
         :param mode: either 'training' or 'inference'
         :param config: not used atm
-        :param weights_path: path to the weights for pwc-net
+        :param pwc_net_weights_path: path to the weights for pwc-net
         :param model_dir: directory to save/load logs and model checkpoints
         :param debugging: whether to include extra print operations
         :param isolated: whether this is the only network running
+        :param optimizer: tf optimizer object, e.g. tf.train.AdadeltaOptimizer(), tf.train.AdamOptimizer()
+        :param loss_function: tf function that computes the loss between the predicted and gt masks
         """
         self.name = 'maskprop'
         self.mode = mode
         self.config = config
-        self.weights_path = weights_path
+        self.weights_path = pwc_net_weights_path
         self.model_dir = model_dir
         self.debugging = debugging
 
-        if isolated:
-            self.sess = tf.Session(tf.ConfigProto())
-        else:
-            self.sess = K.get_session()
+        self.saver = tf.train.Saver()
+
+        self.sess = tf.Session(tf.ConfigProto()) if isolated else K.get_session()
+
+        self.optimizer = optimizer
+        self.loss_function = loss_function
 
         assert mode in ['training', 'inference']
 
@@ -43,32 +48,40 @@ class MaskPropagation(object):
         """
         Builds the computation graph for the mask propagation network.
         """
-        # set up image and mask inputs
-        self.prev_image = tf.placeholder(tf.float32, shape=(None, None, None, 3), name='prev_image')
-        self.curr_image = tf.placeholder(tf.float32, shape=(None, None, None, 3), name='curr_image')
 
-        if self.mode == 'training':
-            self.gt_mask = tf.placeholder(tf.float32, shape=(None, None, None, 1), name='gt_masks')
+        # set up the input images for the optical flow pwc-net
+        with tf.variable_scope(self.name):
+            # set up image and inputs
+            self.prev_images = tf.placeholder(tf.float32, shape=(None, None, None, 3), name='prev_image')
+            self.curr_images = tf.placeholder(tf.float32, shape=(None, None, None, 3), name='curr_image')
 
-        prev = tf.divide(self.prev_image, 255)
-        curr = tf.divide(self.curr_image, 255)
+            if self.mode == 'training':
+                self.gt_masks = tf.placeholder(tf.float32, shape=(None, None, None, 1), name='gt_masks')
+
+            # scale images by 255
+            prev = tf.divide(self.prev_images, 255)
+            curr = tf.divide(self.curr_images, 255)
 
         # feed images into PWC-Net to get optical flow field
         x, _, _ = PWCNet()(prev, curr)
 
-        self.flow_field = tf.image.resize_bilinear(x, tf.shape(prev)[1:3])
+        # prepare input optical flow and input mask for the u-net
+        with tf.variable_scope(self.name):
+            self.flow_field = tf.image.resize_bilinear(x, tf.shape(prev)[1:3], name='flow_field')
+            self.prev_masks = tf.placeholder(tf.float32, shape=(None, None, None, 1), name='prev_masks')
 
-        # feed masks and flow field into CNN
-        self.curr_mask = tf.placeholder(tf.float32, shape=(None, None, None, 1), name='prev_masks')
-        x = tf.concat([self.curr_mask, self.flow_field], axis=3)
+            x = tf.concat([self.prev_masks, self.flow_field], axis=3, name='unet_inputs')
 
+        # build the u-net and get the final propagated mask
         x = self._build_unet(x)
         self.propagated_masks = x
 
-        if self.mode == 'training':
-            self.loss = tf.losses.mean_squared_error(self.gt_mask, self.propagated_masks)
-            trainables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='unet')
-            self.optimizer = tf.train.AdadeltaOptimizer().minimize(self.loss, var_list=trainables)
+        # build training end of network
+        with tf.variable_scope(self.name):
+            if self.mode == 'training':
+                self.loss = self.loss_function(self.gt_masks, self.propagated_masks)
+                trainables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='unet')
+                self.optimizable = self.optimizer.minimize(self.loss, var_list=trainables)
 
         # load weights for optical flow model from disk
         tf.global_variables_initializer().run(session=self.sess)
@@ -150,25 +163,23 @@ class MaskPropagation(object):
 
             return x
 
-    # TODO add multi-epoch, multi-step train() method that uses a generator pattern to load images to train_single()
-
-    def train_batch(self, prev_images, curr_images, curr_masks, gt_masks):
+    def train_batch(self, prev_images, curr_images, prev_masks, gt_masks):
         """
         Trains the mask propagation network on a single batch of inputs.
         :param prev_images: previous images at time t-1 [batch, w, h, 3]
         :param curr_images: current images at time t [batch, w, h, 3]
-        :param curr_masks: the masks at time t [batch, w, h, 1]
+        :param prev_masks: the masks at time t [batch, w, h, 1]
         :param gt_masks: ground truth next masks at time t+1 [batch, w, h, 1]
         :return: batch loss of the predicted masks against the provided ground truths
         """
         assert self.mode == 'training'
 
-        inputs = {self.prev_image: prev_images,
-                  self.curr_image: curr_images,
-                  self.curr_mask: curr_masks,
-                  self.gt_mask: gt_masks}
+        inputs = {self.prev_images: prev_images,
+                  self.curr_images: curr_images,
+                  self.prev_masks: prev_masks,
+                  self.gt_masks: gt_masks}
 
-        _, loss = self.sess.run([self.optimizer, self.loss], feed_dict=inputs)
+        _, loss = self.sess.run([self.optimizable, self.loss], feed_dict=inputs)
 
         return loss
 
@@ -201,25 +212,25 @@ class MaskPropagation(object):
 
         losses = [None] * steps
 
-        #_, loss = self.sess.run([self.optimizer, self.loss], feed_dict=inputs)
+        # use self.train_batch()
 
         return losses
 
-    def get_flow_field(self, prev_image, curr_image):
+    def infer_flow_field(self, prev_image, curr_image):
         """
         Evaluates the model to get the flow field between the two images.
         :param prev_image: starting image for flow [w, h, 3]
         :param curr_image: ending image for flow [w, h, 3]
         :return: flow field for the images [batch, w, h, 2]
         """
-        inputs = {self.prev_image: np.expand_dims(prev_image, 0),
-                  self.curr_image: np.expand_dims(curr_image, 0)}
+        inputs = {self.prev_images: np.expand_dims(prev_image, 0),
+                  self.curr_images: np.expand_dims(curr_image, 0)}
 
         mask = self.sess.run(self.flow_field, feed_dict=inputs)
 
         return mask
 
-    def get_propagated_mask(self, prev_image, curr_image, curr_mask):
+    def infer_propagated_mask(self, prev_image, curr_image, curr_mask):
         """
         Propagates the masks through the model to get the predicted mask.
         :param prev_image: starting image for flow at time t-1 [w, h, 3]
@@ -227,9 +238,9 @@ class MaskPropagation(object):
         :param curr_mask: the mask at time t [w, h, 1]
         :return: predicted/propagated mask at time t+1 [1, w, h, 1]
         """
-        inputs = {self.prev_image: np.expand_dims(prev_image, 0),
-                  self.curr_image: np.expand_dims(curr_image, 0),
-                  self.curr_mask: np.expand_dims(curr_mask, 0)}
+        inputs = {self.prev_images: np.expand_dims(prev_image, 0),
+                  self.curr_images: np.expand_dims(curr_image, 0),
+                  self.prev_masks: np.expand_dims(curr_mask, 0)}
 
         mask = self.sess.run(self.propagated_masks, feed_dict=inputs)
 
@@ -257,7 +268,7 @@ def test():
     img1 = imageio.imread(os.path.join(root_dir, 'pwc_net/test_images/frame1.jpg'))
     img2 = imageio.imread(os.path.join(root_dir, 'pwc_net/test_images/frame2.jpg'))
 
-    oflow = mp.get_flow_field(img1, img2)
+    oflow = mp.infer_flow_field(img1, img2)
     plt.figure(1)
     plt.subplot(211)
     plt.imshow(oflow[0, :, :, 0])
@@ -265,6 +276,6 @@ def test():
     plt.imshow(oflow[0, :, :, 1])
     plt.show()
 
-    mp.get_propagated_mask(img1, img2, np.reshape(np.empty(img1.shape)[:, :, 0], (1080, 1349, 1)))
+    mp.infer_propagated_mask(img1, img2, np.reshape(np.empty(img1.shape)[:, :, 0], (1080, 1349, 1)))
 
     mp.train_batch(img1, img2, np.empty((1080, 1349, 1)), np.empty((1080, 1349, 1)))

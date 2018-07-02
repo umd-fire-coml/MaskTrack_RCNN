@@ -25,8 +25,9 @@ import warnings
 COCO_MODEL_URL = "https://github.com/matterport/Mask_RCNN/releases/download/v2.0/mask_rcnn_coco.h5"
 
 #######################################
-### Put your utility functions here ###
+#   Put your utility functions here   #
 #######################################
+
 
 def crop_image_by_mask(image, mask, same_dim=False):
     """Returns an array with the actual image pixel values for the mask
@@ -38,7 +39,7 @@ def crop_image_by_mask(image, mask, same_dim=False):
     an array with the actual image pixel values in place of the mask
     """
 
-    assert len(image.shape) == 3, 'just images, no batch here'  # ,'are you a >3d being whose images are >rank 3 tensors?!'
+    assert len(image.shape) == 3, 'just images, no batch here'  # are you a >3d being whose images are >rank 3 tensors?!
     assert len(mask.shape) == 2, 'mask should be [height, width]'
     assert image.shape[:2] == mask.shape
 
@@ -61,6 +62,7 @@ def crop_image_by_mask(image, mask, same_dim=False):
         x1, x2, y1, y2 = 0, 0, 0, 0
 
     return image[y1:y2, x1:x2] * mask[y1:y2, x1:x2, np.newaxis]
+
 
 ############################################################
 #  Bounding Boxes
