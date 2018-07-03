@@ -1,8 +1,8 @@
 from keras.utils import Sequence
 
 class TensorflowDataGenerator(Sequence):
-	
-	@abstractmethod
+    
+    @abstractmethod
     def slice_tensor(self, tensor):
         """Slices the tensor for input into the mask propagation module.
         # Returns
@@ -22,8 +22,8 @@ class MPDataGenerator(TensorflowDataGenerator):
 
     def __init__(self, re_id_module):
 
-    	self.re_id_module = re_id_module
-	self.m_len = 0
+        self.re_id_module = re_id_module
+    self.m_len = 0
     
     def load_video(self, video_list_filename, labeled=True, assume_match=False):
         """Loads all the images from a particular video list into the dataset.
@@ -32,7 +32,7 @@ class MPDataGenerator(TensorflowDataGenerator):
         mask_dir: directory of the mask images, if available
         assume_match: Whether to assume all images have ground-truth masks
         """\
-	
+    
 #         # Get list of images for this video
 #         video_file = open(video_list_filename, 'r')
 #         image_filenames = video_file.readlines()
@@ -67,7 +67,7 @@ class MPDataGenerator(TensorflowDataGenerator):
 
     def load_mp_data(self):
 
-    	pass
+        pass
 
     def slice_tensor(self, tensor):
  
