@@ -29,6 +29,11 @@ class MPDataGenerator(TensorflowDataGenerator):
         self.re_id_module = re_id_module
         self.m_len = 0
         self.image_info = []
+        self.video_indices = []
+        self.epoch_order = None
+        
+    def add_image(self):
+        pass
     
     def load_video(self, video_list_filename):
         """Loads all the images from a particular video list into the dataset.
