@@ -8,10 +8,10 @@ class TensorflowDataGenerator(Sequence):
         # Returns
             A dictionary of the correct slices of the tensor.
             ```python
-            result = {'prev_image':      slice,
-                      'self.curr_image': slice,
-                       'prev_mask':      slice,
-                       'gt_mask':        slice}
+            result = {'prev_image': slice,
+                      'curr_image': slice,
+                      'prev_mask':  slice,
+                      'gt_mask':    slice}
             ```
         """
         raise NotImplementedError
@@ -71,7 +71,10 @@ class MPDataGenerator(TensorflowDataGenerator):
 
     def slice_tensor(self, tensor):
  
-        raise NotImplementedError
+        return {'prev_image': tensor[:, :, :3],
+                'curr_image': tensor[:, :, 3:6],
+                'prev_mask':  tensor[:, :, 6],
+                'gt_mask':    tensor[:, :, 7}
 
     def __getitem__(self, index):
         """Gets batch at position `index`.
