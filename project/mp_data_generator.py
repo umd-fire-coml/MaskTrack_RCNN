@@ -71,7 +71,7 @@ class MPDataGenerator(TensorflowDataGenerator):
 
     def slice_tensor(self, tensor):
  
-        return {'prev_image': tensor[:, :, :3],
+        return {'prev_image': tensor[:, :, 0:3],
                 'curr_image': tensor[:, :, 3:6],
                 'prev_mask':  tensor[:, :, 6],
                 'gt_mask':    tensor[:, :, 7}
