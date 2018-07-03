@@ -32,6 +32,33 @@ assert LooseVersion(tf.__version__) >= LooseVersion("1.3")
 assert LooseVersion(keras.__version__) >= LooseVersion('2.0.8')
 
 
+### OPTIMIZATION EDITS BY SHIVAM AND KYLE
+
+import sys
+import time
+
+class TimePerBatchCallback(keras.callbacks.Callback):
+    
+    def on_batch_begin(self, batch, logs={}):
+        logs['batch_start_time'] = time.time()
+        return
+    
+    def on_batch_end(self, batch, logs={}):
+        print('\n\n\nOPTIMIZATION LOG: batch time: ' 
+              + str(time.time() - logs['batch_start_time']) + '\n\n')
+        sys.stdout.flush()
+        return
+    
+# Learning Rate Finder
+
+# why do I need to specify mrcnn. (isn't this file already in the mrcnn directory!)
+from mrcnn.lr_finder import LRFinder
+
+print('CURRENTLY EDITTING FOR OPTIMIZATION, DO NOT USE IN PRODUCTION USE')
+
+### END OPTIMIZATION EDITS
+
+
 ############################################################
 #  Utility Functions
 ############################################################
@@ -1819,6 +1846,7 @@ class MaskRCNN:
     """
 
     def __init__(self, mode, config, model_dir):
+        
         """
         mode: Either "training" or "inference"
         config: A Sub-class of the Config class
@@ -2317,13 +2345,20 @@ class MaskRCNN:
                                          batch_size=self.config.BATCH_SIZE)
         val_generator = data_generator(val_dataset, self.config, shuffle=True,
                                        batch_size=self.config.BATCH_SIZE)
-
+        
+        # OPTIMIZATION EDIT
+        # TODO: edit these parameters!
+        self.lr_finder = LRFinder(
+            steps_per_epoch = self.config.STEPS_PER_EPOCH, 
+            epochs = epochs
+        )
+        
         # Callbacks (mod: extend with extra callbacks)
         callbacks = [
-            keras.callbacks.TensorBoard(log_dir=self.log_dir,
-                                        histogram_freq=0, write_graph=True, write_images=False),
-            keras.callbacks.ModelCheckpoint(self.checkpoint_path,
-                                            verbose=0, save_weights_only=True),
+            # keras.callbacks.TensorBoard(log_dir=self.log_dir, histogram_freq=0, write_graph=True, write_images=False),
+            keras.callbacks.ModelCheckpoint(self.checkpoint_path, verbose=0, save_weights_only=True)
+            # TimePerBatchCallback() # OPTIMIZATION EDIT MADE BY SHIVAM AND KYLE
+            # self.lr_finder
         ] + callbacks
 
         # Train
