@@ -9,6 +9,7 @@ from tensorflow import layers as TL
 from tensorflow import data as TD
 
 from pwc_net.model import PWCNet
+from mp_data_generator import TensorflowDataGenerator
 
 
 class MaskPropagation(object):
@@ -183,10 +184,11 @@ class MaskPropagation(object):
 
         return loss
 
-    def train_multi_batch(self, generator, steps, batch_size, output_types, output_shapes=None):
-        """
-        Trains the mask propagation network on multiple batches. (Essentially an epoch.)
-        :param generator: A generator or an instance of Sequence (keras.utils.Sequence) object in order to avoid duplicate data when using multiprocessing. 
+    #MAJOR WORK IN PROGRESS
+    def train_multi_step(self, generator, steps, batch_size, output_types, output_shapes=None):
+        """DO NOT USE. THIS IS VERY BAD IF YOU USE. DO NOT USE
+        Trains the mask propagation network on multiple steps (batches). (Essentially an epoch.)
+        :param train_dataset: Training Dataset object
         :param steps: Number of times to call the generator. (Number of steps in this "epoch".)
         :param batch_size: A tf.int64 scalar tf.Tensor, representing the number of consecutive elements of the generator to combine in a single batch.
         :param output_types: output_types: A nested structure of tf.DType objects corresponding to each component of an element yielded by generator.
@@ -194,6 +196,7 @@ class MaskPropagation(object):
         :return: a list of batch losses of the predicted masks against the generated ground truths
         """
         assert self.mode == 'training'
+        assert isinstance(generator, TensorflowDataGenerator)
 
         dataset = TD.Dataset().batch(batch_size).from_generator(generator,
                                                    output_types=output_types, 
@@ -201,18 +204,18 @@ class MaskPropagation(object):
         _iter = dataset.make_initializable_iterator()
         element = _iter.get_next()
         self.sess.run(_iter.initializer)
-        # print(sess.run(el))
-        # print(sess.run(el))
-        # print(sess.run(el))
 
-        # inputs = {self.prev_image: prev_images,
-        #           self.curr_image: curr_images,
-        #           self.curr_mask: curr_masks,
-        #           self.gt_mask: gt_masks}
+        sliced_tensor = generator.slice_tensor(element)
+        inputs = {self.prev_image: sliced_tensor['prev_image'],
+                  self.curr_image: sliced_tensor['curr_image'],
+                  self.prev_mask: sliced_tensor['prev_mask'],
+                  self.gt_mask: sliced_tensor['gt_mask']}
 
         losses = [None] * steps
 
-        # use self.train_batch()
+        for i in range(steps):
+             _, loss = self.sess.run([self.optimizer, self.loss], feed_dict=inputs)
+             losses.append(loss)
 
         return losses
 
