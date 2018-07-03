@@ -1,7 +1,7 @@
 from keras.utils import Sequence
 
 class TensorflowDataGenerator(Sequence):
-
+	
 	@abstractmethod
     def slice_tensor(self, tensor):
         """Slices the tensor for input into the mask propagation module.
