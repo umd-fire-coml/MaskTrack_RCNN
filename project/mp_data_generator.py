@@ -1,6 +1,6 @@
 from keras.utils import Sequence
 import re
-from os.path import join, isfile, 
+from os.path import join, isfile
 
 class TensorflowDataGenerator(Sequence):
     
