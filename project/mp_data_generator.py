@@ -1,6 +1,7 @@
 from keras.utils import Sequence
 import re
 from os.path import join, isfile
+from abc import abstractmethod
 
 class TensorflowDataGenerator(Sequence):
     
