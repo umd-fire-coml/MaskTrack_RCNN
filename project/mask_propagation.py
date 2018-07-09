@@ -9,7 +9,9 @@ from tensorflow import layers as TL
 from tensorflow import data as TD
 
 from pwc_net.model import PWCNet
-from mp_data_generator import TensorflowDataGenerator
+
+### dependencies ###
+from .mp_data_generator import TensorflowDataGenerator
 
 
 class MaskPropagation(object):
