@@ -156,28 +156,8 @@ class MaskTrajectory(object):
 
         self.keras_model.compile(optimizer=self.optimizer,
                                  loss=self.loss_function)
-        
-        def train(self, train_dataset, val_dataset, learning_rate, epochs, layers):
 
-    def train_batch(self, prev_images, curr_images, prev_masks, gt_masks):
-        """
-        Trains the mask propagation network on a single batch of inputs.
-        :param prev_images: previous images at time t-1 [batch, w, h, 3]
-        :param curr_images: current images at time t [batch, w, h, 3]
-        :param prev_masks: the masks at time t [batch, w, h, 1]
-        :param gt_masks: ground truth next masks at time t+1 [batch, w, h, 1]
-        :return: batch loss of the predicted masks against the provided ground truths
-        """
-        assert self.mode == 'training'
-
-        inputs = {self.prev_images: prev_images,
-                  self.curr_images: curr_images,
-                  self.prev_masks: prev_masks,
-                  self.gt_masks: gt_masks}
-
-        _, loss = self.sess.run([self.optimizable, self.loss], feed_dict=inputs)
-
-        return loss
+#     def train_batch(self, flow_field, prev_masks):
 
     #MAJOR WORK IN PROGRESS
     def train_multi_step(self, train_generator, val_generator, epochs, steps_per_epoch, batch_size):
