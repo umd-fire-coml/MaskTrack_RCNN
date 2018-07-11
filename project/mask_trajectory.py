@@ -17,10 +17,8 @@ class MaskTrajectory(object):
         Creates and builds the mask propagation network.
         :param mode: either 'training' or 'inference'
         :param config: not used atm
-        :param pwc_net_weights_path: path to the weights for pwc-net
         :param model_dir: directory to save/load logs and model checkpoints
         :param debugging: whether to include extra print operations
-        :param isolated: whether this is the only network running
         :param optimizer: keras optimizer object,
           e.g. keras.optimizers.Adadelta()
         :param loss_function: a (could be Keras) function that computes the loss between
@@ -51,7 +49,7 @@ class MaskTrajectory(object):
         prev_mask = Input(shape=(None, None, None, 1))
         inputs = [flow_field, prev_mask]
 
-        x = KL.Concatenate(inputs, axis=3)
+        x = KL.Concatenate(inputs, axis=3, name='L0_concat')
 
         # build the u-net and get the final propagated mask
         x = self._build_unet(x)
@@ -67,6 +65,7 @@ class MaskTrajectory(object):
 
         return model
 
+    # relu with max value defined by the variable relu_max
     def m_relu(x):
 
         return K.relu(x, max_value=relu_max)
@@ -114,7 +113,7 @@ class MaskTrajectory(object):
 
         x = KL.Conv2DTranspose( 1024, (2, 2), strides=(2, 2),
             activation=deconv_act, name='P4_upconv')(x)
-        x = tf.concat([L4, tf.image.resize_images( tf.shape(L4)[1:3])],
+        x = KL.Concatenate([L4, K.resize_images( tf.shape(L4)[1:3])],
                       axis=3, name='P4_concat')(x)
         x = KL.Conv2D( 512, (3, 3), activation=conv_act, name='P4_conv1')(x)
         x = KL.Conv2D( 512, (3, 3), activation=conv_act, name='P4_conv2')(x)
