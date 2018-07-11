@@ -45,8 +45,8 @@ class MaskTrajectory(object):
         Builds the mask trajectory network.
         """
 
-        flow_field = KL.Input(shape=(None, None, 2))
-        prev_mask = KL.Input(shape=(None, None, 1))
+        flow_field = KL.Input(shape=(None, None, 2), name='flow_field')
+        prev_mask = KL.Input(shape=(None, None, 1), name='prev_mask')
         inputs = [flow_field, prev_mask]
 
         x = KL.Concatenate(axis=3, name='L0_concat')(inputs)
@@ -160,14 +160,14 @@ class MaskTrajectory(object):
     def train_multi_step(self, train_generator, val_generator, epochs, batch_size):
         """THIS IS WORK IN PROGRESS. DO NOT USE YET
         Trains the mask propagation network on multiple steps via Keras Sequence.
-        :param train_generator: TBD but is a Keras Sequence
-        :param val_generator: TBD but is a Keras Sequence
+        :param train_generator: a Keras Sequence
+        :param val_generator: a Keras Sequence
         :param batch_size: the number of batches (used to compute number of workers)
         :return: None
         """
-        
+
         self.compile()
-        
+
         # Work-around for Windows: Keras fails on Windows when using
         # multiprocessing workers. See discussion here:
         # https://github.com/matterport/Mask_RCNN/issues/13#issuecomment-353124009
