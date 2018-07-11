@@ -55,7 +55,7 @@ class MaskTrajectory(object):
         outputs = self._build_unet(x)
         #self.propagated_masks = x
 
-        model = KM.Model(inputs, outputs, name='mask_rcnn')
+        model = KM.Model(inputs, outputs, name='mask_trajectory')
 
         if self.weights_path:
 
@@ -157,24 +157,16 @@ class MaskTrajectory(object):
 #     def train_batch(self, flow_field, prev_masks):
 
     #MAJOR WORK IN PROGRESS
-    def train_multi_step(self, train_generator, val_generator, epochs, steps_per_epoch, batch_size):
+    def train_multi_step(self, train_generator, val_generator, epochs, batch_size):
         """THIS IS WORK IN PROGRESS. DO NOT USE YET
-        Trains the mask propagation network on multiple steps (batches).
-        (Essentially an epoch.)
-        :param train_dataset: Training Dataset object
-        :param steps: Number of times to call the generator.
-          (Number of steps in this "epoch".)
-        :param batch_size: A tf.int64 scalar tf.Tensor, representing the number
-          of consecutive elements of the generator to combine in a single batch.
-        :param output_types: output_types: A nested structure of
-          tf.DType objects corresponding to each component of an element yielded
-          by generator.
-        :param output_shapes: (Optional.) A nested structure of tf.TensorShape
-          objects corresponding to each component of an element yielded by
-          generator.
-        :return: a list of batch losses of the predicted masks against the
-          generated ground truths
+        Trains the mask propagation network on multiple steps via Keras Sequence.
+        :param train_generator: TBD but is a Keras Sequence
+        :param val_generator: TBD but is a Keras Sequence
+        :param batch_size: the number of batches (used to compute number of workers)
+        :return: None
         """
+        
+        self.compile()
         
         # Work-around for Windows: Keras fails on Windows when using
         # multiprocessing workers. See discussion here:
@@ -188,10 +180,8 @@ class MaskTrajectory(object):
             train_generator,
             initial_epoch=self.epoch,
             epochs=epochs,
-            steps_per_epoch=steps_per_epoch,
 #             callbacks=callbacks,
             validation_data=val_generator,
-            validation_steps=self.config.VALIDATION_STEPS,
             max_queue_size=100,
             workers=workers,
             use_multiprocessing=True,
