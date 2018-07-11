@@ -1,10 +1,11 @@
 from keras import backend as K
 from keras import layers as KL
 from keras import data as KD
+from keras import models as KM
 
-class TrajectoryModule(object):
+class MaskTrajectory(object):
 
-    name = 'trajectory'
+    name = 'mask_trajectory'
     relu_max = 6
 
     def __init__(self, mode, config, model_dir,
@@ -18,9 +19,9 @@ class TrajectoryModule(object):
         :param model_dir: directory to save/load logs and model checkpoints
         :param debugging: whether to include extra print operations
         :param isolated: whether this is the only network running
-        :param optimizer: tf optimizer object,
-          e.g. tf.train.AdadeltaOptimizer(), tf.train.AdamOptimizer()
-        :param loss_function: tf function that computes the loss between
+        :param optimizer: keras optimizer object,
+          e.g. keras.optimizers.Adadelta()
+        :param loss_function: a (could be Keras) function that computes the loss between
           the predicted and gt masks
         """
         self.mode = mode
@@ -39,7 +40,7 @@ class TrajectoryModule(object):
 
     def _build(self):
         """
-        Builds the computation graph for the mask propagation network.
+        Builds the mask trajectory network.
         """
 
         flow_field = Input(shape=(None, None, None, 2))
@@ -217,7 +218,7 @@ class TrajectoryModule(object):
 
         return losses
 
-    def inference(self, prev_image, curr_image):
+    def inference(self, flow_field, prev_mask):
         """
         Evaluates the model to get the flow field between the two images.
         :param prev_image: starting image for flow [w, h, 3]
@@ -227,21 +228,18 @@ class TrajectoryModule(object):
 
         assert self.mode == 'inference'
 
-        inputs = {self.prev_images: np.expand_dims(prev_image, 0),
-                  self.curr_images: np.expand_dims(curr_image, 0)}
-
-        mask = self.sess.run(self.flow_field, feed_dict=inputs)
+        inputs = [flow_field, prev_mask]
+        
+        mask = self.keras_model.predict(inputs, verbose=0)
 
         return mask
 
     def save_weights(self, filename):
         weights_pathname = os.path.join(self.model_dir, filename)
+        
+        self.keras_model.save_weights(weights_pathname)
 
-        # TODO implement saving all weights
-        pass
-
-    def load_weights(self, filename):
+    def load_weights(self, filename, by_name=False):
         weights_pathname = os.path.join(self.model_dir, filename)
 
-        # TODO implement loading all weights
-        pass
+        self.keras_model.load_weights(weights_pathname, by_name)
