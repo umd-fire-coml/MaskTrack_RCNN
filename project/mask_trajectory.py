@@ -4,6 +4,7 @@ from keras import backend as K
 from keras import layers as KL
 from keras import data as KD
 from keras import models as KM
+from keras.backend import tensorflow as KTF
 
 class MaskTrajectory(object):
 
@@ -113,16 +114,17 @@ class MaskTrajectory(object):
 
         x = KL.Conv2DTranspose( 1024, (2, 2), strides=(2, 2),
             activation=deconv_act, name='P4_upconv')(x)
-        x = KL.Concatenate([L4, K.resize_images( tf.shape(L4)[1:3])],
-                      axis=3, name='P4_concat')(x)
+        x = Lambda(lambda image: KTF.image.resize_images(image, K.shape(L4)[1:3]))(x)
+        x = KL.Concatenate([L4, x],
+                      axis=3, name='P4_concat')
         x = KL.Conv2D( 512, (3, 3), activation=conv_act, name='P4_conv1')(x)
         x = KL.Conv2D( 512, (3, 3), activation=conv_act, name='P4_conv2')(x)
         P4 = x
 
         x = KL.Conv2DTranspose( 512, (2, 2), strides=(2, 2),
             activation=deconv_act, name='P3_upconv')(x)
-        x = tf.concat([L3, tf.image.resize_images( tf.shape(L3)[1:3])],
-                      axis=3, name='P3_concat')(x)
+        x = tf.concat([L3, tf.image.resize_images(x, K.shape(L3)[1:3])],
+                      axis=3, name='P3_concat')
         x = KL.Conv2D( 256, (3, 3), activation=conv_act, name='P3_conv1')(x)
         x = KL.Conv2D( 256, (3, 3), activation=conv_act, name='P3_conv2')(x)
         P3 = x
