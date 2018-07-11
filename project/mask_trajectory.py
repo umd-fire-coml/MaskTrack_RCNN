@@ -2,9 +2,8 @@ import os
 
 from keras import backend as K
 from keras import layers as KL
-from keras import data as KD
 from keras import models as KM
-from keras.backend import tensorflow as KTF
+from keras.backend import tf as KTF
 
 class MaskTrajectory(object):
 
@@ -53,10 +52,8 @@ class MaskTrajectory(object):
         x = KL.Concatenate(inputs, axis=3, name='L0_concat')
 
         # build the u-net and get the final propagated mask
-        x = self._build_unet(x)
-        self.propagated_masks = x
-
-        model = KM.Model(inputs, outputs, name='mask_rcnn')
+        outputs = self._build_unet(x)
+        #self.propagated_masks = x
 
         model = KM.Model(inputs, outputs, name='mask_rcnn')
 
