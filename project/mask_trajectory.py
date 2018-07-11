@@ -45,8 +45,8 @@ class MaskTrajectory(object):
         Builds the mask trajectory network.
         """
 
-        flow_field = Input(shape=(None, None, None, 2))
-        prev_mask = Input(shape=(None, None, None, 1))
+        flow_field = KL.Input(shape=(None, None, 2))
+        prev_mask = KL.Input(shape=(None, None, 1))
         inputs = [flow_field, prev_mask]
 
         x = KL.Concatenate(axis=3, name='L0_concat')(inputs)
@@ -66,7 +66,7 @@ class MaskTrajectory(object):
     # relu with max value defined by the variable relu_max
     def m_relu(x):
 
-        return K.relu(x, max_value=relu_max)
+        return K.relu(x, max_value=MaskTrajectory.relu_max)
 
     def _build_unet(self, x, conv_act=m_relu, deconv_act=None):
         """
@@ -110,7 +110,7 @@ class MaskTrajectory(object):
         L5 = x
 
         x = KL.Conv2DTranspose(1024, (2, 2), strides=(2, 2),
-                              activation=deconv_act, name='P4_upconv')(x)
+                               activation=deconv_act, name='P4_upconv')(x)
         x = KL.Lambda(lambda image: KTF.image.resize_images(image, K.shape(L4)[1:3]))(x)
         x = KL.Concatenate(axis=3, name='P4_concat')([L4, x])
         x = KL.Conv2D( 512, (3, 3), activation=conv_act, name='P4_conv1')(x)
