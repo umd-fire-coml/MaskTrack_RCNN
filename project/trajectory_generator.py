@@ -1,25 +1,8 @@
 from keras.utils import Sequence
 import re
 from os.path import join, isfile
-from abc import abstractmethod
 
-class TensorflowDataGenerator(Sequence):
-    
-    @abstractmethod
-    def slice_tensor(self, tensor):
-        """Slices the tensor for input into the mask propagation module.
-        # Returns
-            A dictionary of the correct slices of the tensor.
-            ```python
-            result = {'prev_image': slice,
-                      'curr_image': slice,
-                      'prev_mask':  slice,
-                      'gt_mask':    slice}
-            ```
-        """
-        raise NotImplementedError
-
-class MPDataGenerator(TensorflowDataGenerator):
+class TrajectoryDataGenerator(Sequence):
     """Documentation to be written
     Note that this generator will be only for training.
     We will use another one for test data (which does not include ground truth mask).
@@ -74,13 +57,6 @@ class MPDataGenerator(TensorflowDataGenerator):
     def load_mp_data(self):
 
         pass
-
-    def slice_tensor(self, tensor):
- 
-        return {'prev_image': tensor[:, :, 0:3],
-                'curr_image': tensor[:, :, 3:6],
-                'prev_mask':  tensor[:, :, 6],
-                'gt_mask':    tensor[:, :, 7]}
 
     def __getitem__(self, index):
         """Gets batch at position `index`.
