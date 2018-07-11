@@ -1,8 +1,8 @@
 # add PWCNet library to path
 import sys
-sys.path.append("../pwc_net")
+sys.path.append("../")
 
-from pwc_net import PWCNet
+from pwc_net.model import PWCNet
 import tensorflow as tf
 import numpy as np
 import skimage.io as io
@@ -15,7 +15,7 @@ from skimage.transform import rescale
 ##
 ## Usage:
 ## 
-## model_path = '../model_3000epoch/model_3007.ckpt'
+## model_path = '../pwc_net/model_3000epoch/model_3007.ckpt'
 ## model = OpticalFlow(model_path)
 ##
 ## image_prev, image_curr = model.read_images_from_path(path_prev, path_curr) 
