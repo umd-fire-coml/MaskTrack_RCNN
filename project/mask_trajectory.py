@@ -94,12 +94,12 @@ class MaskTrajectory(object):
         x = KL.Conv2D( 128, (3, 3), activation=conv_act, name='L2_conv2')(x)
         L2 = x
 
-        x = KL.MaxPooling2D( (2, 2), (2, 2), name='L3_pool')
+        x = KL.MaxPooling2D( (2, 2), (2, 2), name='L3_pool')(x)
         x = KL.Conv2D( 256, (3, 3), activation=conv_act, name='L3_conv1')(x)
         x = KL.Conv2D( 256, (3, 3), activation=conv_act, name='L3_conv2')(x)
         L3 = x
 
-        x = KL.MaxPooling2D( (2, 2), (2, 2), name='L4_pool')
+        x = KL.MaxPooling2D( (2, 2), (2, 2), name='L4_pool')(x)
         x = KL.Conv2D( 512, (3, 3), activation=conv_act, name='L4_conv1')(x)
         x = KL.Conv2D( 512, (3, 3), activation=conv_act, name='L4_conv2')(x)
         L4 = x
@@ -109,11 +109,10 @@ class MaskTrajectory(object):
         x = KL.Conv2D( 1024, (3, 3), activation=conv_act, name='L5_conv2')(x)
         L5 = x
 
-        x = KL.Conv2DTranspose( 1024, (2, 2), strides=(2, 2),
-            activation=deconv_act, name='P4_upconv')(x)
-        x = Lambda(lambda image: KTF.image.resize_images(image, K.shape(L4)[1:3]))(x)
-        x = KL.Concatenate([L4, x],
-                      axis=3, name='P4_concat')
+        x = KL.Conv2DTranspose(1024, (2, 2), strides=(2, 2),
+                              activation=deconv_act, name='P4_upconv')(x)
+        x = KL.Lambda(lambda image: KTF.image.resize_images(image, K.shape(L4)[1:3]))(x)
+        x = KL.Concatenate(axis=3, name='P4_concat')([L4, x])
         x = KL.Conv2D( 512, (3, 3), activation=conv_act, name='P4_conv1')(x)
         x = KL.Conv2D( 512, (3, 3), activation=conv_act, name='P4_conv2')(x)
         P4 = x
