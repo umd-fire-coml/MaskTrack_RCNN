@@ -16,8 +16,13 @@ class TrajectoryDataGenerator(Sequence):
         self.video_indices = []
         self.epoch_order = None
         
-    def add_image(self):
-        pass
+    def add_image(self, image_id, path, mask_path):
+        image_info = {
+            "id": image_id,
+            "path": path,
+            "mask_path": mask_path
+        }
+        self.image_info.append(image_info)
     
     def load_video(self, video_list_filename):
         """Loads all the images from a particular video list into the dataset.
@@ -52,7 +57,7 @@ class TrajectoryDataGenerator(Sequence):
                 mask_file = None
 
             # Add the image to the dataset
-            self.add_image("WAD", image_id=img_id, path=img_file, mask_path=mask_file)
+            self.add_image(image_id=img_id, path=img_file, mask_path=mask_file)
 
     def load_mp_data(self):
 
