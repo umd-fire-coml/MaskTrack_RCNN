@@ -1,3 +1,5 @@
+import os
+
 from keras import backend as K
 from keras import layers as KL
 from keras import data as KD
@@ -33,6 +35,8 @@ class MaskTrajectory(object):
 
         self.optimizer = optimizer
         self.loss_function = loss_function
+        
+        self.epoch = 0
 
         assert mode in ['training', 'inference']
 
@@ -152,6 +156,8 @@ class MaskTrajectory(object):
 
         self.keras_model.compile(optimizer=self.optimizer,
                                  loss=self.loss_function)
+        
+        def train(self, train_dataset, val_dataset, learning_rate, epochs, layers):
 
     def train_batch(self, prev_images, curr_images, prev_masks, gt_masks):
         """
@@ -174,9 +180,8 @@ class MaskTrajectory(object):
         return loss
 
     #MAJOR WORK IN PROGRESS
-    def train_multi_step(self, generator, steps, batch_size, output_types,
-        output_shapes=None):
-        """DO NOT USE. THIS IS VERY BAD IF YOU USE. DO NOT USE
+    def train_multi_step(self, train_generator, val_generator, epochs, steps_per_epoch, batch_size):
+        """THIS IS WORK IN PROGRESS. DO NOT USE YET
         Trains the mask propagation network on multiple steps (batches).
         (Essentially an epoch.)
         :param train_dataset: Training Dataset object
@@ -193,30 +198,28 @@ class MaskTrajectory(object):
         :return: a list of batch losses of the predicted masks against the
           generated ground truths
         """
-        assert self.mode == 'training'
-        assert isinstance(generator, TensorflowDataGenerator)
+        
+        # Work-around for Windows: Keras fails on Windows when using
+        # multiprocessing workers. See discussion here:
+        # https://github.com/matterport/Mask_RCNN/issues/13#issuecomment-353124009
+        if os.name is 'nt':
+            workers = 0
+        else:
+            workers = max(batch_size // 2, 2)
 
-        dataset = TD.Dataset().batch(batch_size).from_generator(generator,
-                                                   output_types=output_types, 
-                                                   output_shapes=output_shapes)
-        _iter = dataset.make_initializable_iterator()
-        element = _iter.get_next()
-        self.sess.run(_iter.initializer)
-
-        sliced_tensor = generator.slice_tensor(element)
-        inputs = {self.prev_image: sliced_tensor['prev_image'],
-                  self.curr_image: sliced_tensor['curr_image'],
-                  self.prev_mask: sliced_tensor['prev_mask'],
-                  self.gt_mask: sliced_tensor['gt_mask']}
-
-        losses = [None] * steps
-
-        for i in range(steps):
-             _, loss = self.sess.run([self.optimizer, self.loss],
-                                     feed_dict=inputs)
-             losses.append(loss)
-
-        return losses
+        self.keras_model.fit_generator(
+            train_generator,
+            initial_epoch=self.epoch,
+            epochs=epochs,
+            steps_per_epoch=steps_per_epoch,
+#             callbacks=callbacks,
+            validation_data=val_generator,
+            validation_steps=self.config.VALIDATION_STEPS,
+            max_queue_size=100,
+            workers=workers,
+            use_multiprocessing=True,
+        )
+        self.epoch = max(self.epoch, epochs)
 
     def inference(self, flow_field, prev_mask):
         """
