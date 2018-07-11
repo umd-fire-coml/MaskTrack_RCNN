@@ -49,7 +49,7 @@ class MaskTrajectory(object):
         prev_mask = Input(shape=(None, None, None, 1))
         inputs = [flow_field, prev_mask]
 
-        x = KL.Concatenate(inputs, axis=3, name='L0_concat')
+        x = KL.Concatenate(axis=3, name='L0_concat')(inputs)
 
         # build the u-net and get the final propagated mask
         outputs = self._build_unet(x)
@@ -117,32 +117,32 @@ class MaskTrajectory(object):
         x = KL.Conv2D( 512, (3, 3), activation=conv_act, name='P4_conv2')(x)
         P4 = x
 
-        x = KL.Conv2DTranspose( 512, (2, 2), strides=(2, 2),
-            activation=deconv_act, name='P3_upconv')(x)
-        x = tf.concat([L3, tf.image.resize_images(x, K.shape(L3)[1:3])],
-                      axis=3, name='P3_concat')
+        x = KL.Conv2DTranspose(512, (2, 2), strides=(2, 2),
+                               activation=deconv_act, name='P3_upconv')(x)
+        x = KL.Lambda(lambda image: KTF.image.resize_images(image, K.shape(L3)[1:3]))(x)
+        x = KL.Concatenate(axis=3, name='P3_concat')([L3, x])
         x = KL.Conv2D( 256, (3, 3), activation=conv_act, name='P3_conv1')(x)
         x = KL.Conv2D( 256, (3, 3), activation=conv_act, name='P3_conv2')(x)
         P3 = x
 
-        x = KL.Conv2DTranspose( 256, (2, 2), strides=(2, 2),
-            activation=deconv_act, name='P2_upconv')(x)
-        x = tf.concat([L2, tf.image.resize_images( tf.shape(L2)[1:3])],
-                      axis=3, name='P2_concat')(x)
+        x = KL.Conv2DTranspose(256, (2, 2), strides=(2, 2),
+                               activation=deconv_act, name='P2_upconv')(x)
+        x = KL.Lambda(lambda image: KTF.image.resize_images(image, K.shape(L2)[1:3]))(x)
+        x = KL.Concatenate(axis=3, name='P2_concat')([L2, x])
         x = KL.Conv2D( 128, (3, 3), activation=conv_act, name='P2_conv1')(x)
         x = KL.Conv2D( 128, (3, 3), activation=conv_act, name='P2_conv2')(x)
         P2 = x
 
-        x = KL.Conv2DTranspose( 128, (2, 2), strides=(2, 2),
-            activation=deconv_act, name='P1_upconv')(x)
-        x = tf.concat([L1, tf.image.resize_images( tf.shape(L1)[1:3])],
-                      axis=3, name='P1_concat')(x)
+        x = KL.Conv2DTranspose(128, (2, 2), strides=(2, 2),
+                               activation=deconv_act, name='P1_upconv')(x)
+        x = KL.Lambda(lambda image: KTF.image.resize_images(image, K.shape(L1)[1:3]))(x)
+        x = KL.Concatenate(axis=3, name='P1_concat')([L1, x])
         x = KL.Conv2D( 64, (3, 3), activation=conv_act, name='P1_conv1')(x)
         x = KL.Conv2D( 64, (3, 3), activation=conv_act, name='P1_conv2')(x)
         P1 = x
 
-        x = tf.image.resize_images( tf.shape(_input)[1:3])(x)
-        x = KL.Conv2D( 1, (1, 1), activation=tf.sigmoid, name='P0_conv')(x)
+        x = KL.Lambda(lambda image: KTF.image.resize_images(image, K.shape(_input)[1:3]))(x)
+        x = KL.Conv2D( 1, (1, 1), activation='sigmoid', name='P0_conv')(x)
 
         self.unet_left_wing = [L1, L2, L3, L4, L5]
         self.unet_right_wing = [P4, P3, P2, P1]
