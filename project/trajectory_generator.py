@@ -2,6 +2,7 @@ from keras.utils import Sequence
 import re
 from os.path import join, isfile
 import csv
+import numpy as np
 
 class TrajectoryDataGenerator(Sequence):
     """Documentation to be written
@@ -17,6 +18,7 @@ class TrajectoryDataGenerator(Sequence):
         # 2-tuple list containing start and end indices of video in image_infox
 #         self.video_indices = []
         self.epoch_order = None
+        self.on_epoch_end()
 
     def load_video(self, video_list_filename):
         """Loads all the images from a particular video list into the dataset.
@@ -58,4 +60,5 @@ class TrajectoryDataGenerator(Sequence):
     def on_epoch_end(self):
         """Method called at the end of every epoch.
         """
-        pass
+        self.epoch_order = np.arange(self.m_len)
+        np.random.shuffle(self.epoch_order)
