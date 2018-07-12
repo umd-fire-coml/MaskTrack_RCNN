@@ -1,6 +1,7 @@
 from keras.utils import Sequence
 import re
 from os.path import join, isfile
+import csv
 
 class TrajectoryDataGenerator(Sequence):
     """Documentation to be written
@@ -30,36 +31,24 @@ class TrajectoryDataGenerator(Sequence):
     def load_video(self, video_list_filename):
         """Loads all the images from a particular video list into the dataset.
         video_list_filename: path of the file containing the list of images
-        img_dir: directory of the images
-        mask_dir: directory of the mask images, if available
-        assume_match: Whether to assume all images have ground-truth masks
         """
-    
-        # Get list of images for this video
-        video_file = open(video_list_filename, 'r')
-        image_filenames = video_file.readlines()
-        video_file.close()
 
-        if image_filenames is None:
-            print('No video list found at {}.'.format(video_list_filename))
-            return
+        # nothing to do with image
+        # instance id
+        prev_ids = None
 
-        # Generate images and masks
-        for img_mask_paths in image_filenames:
+        with open(video_list_filename, 'rb') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',')
+            for row in reader:
+                # nothing to do with image
+                # instance id
+                curr_ids = {}
 
-            # Set paths and img_id
-            # assume labeled
-            matches = re.search('^.*\\\\(.*\\.jpg).*\\\\(.*\\.png)', img_mask_paths)
-            img_file, mask_file = matches.group(1, 2)
-            img_id = img_file[:-4]
+                row_iter = iter(row)
 
-            # assume files exist
-            
-            #this is the check code
-#             if not isfile(join(self.root_dir + '_color', img_file)):
-#                 continue
-#             if not isfile(join(self.root_dir + '_label', mask_file)):
-#                 mask_file = None
+                img_id = row_iter.next()
+
+                
 
             # Add the image to the dataset
             self.add_image(image_id=img_id, path=img_file, mask_path=mask_file)
