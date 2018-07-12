@@ -4,20 +4,23 @@ from os.path import join, isfile
 import os
 import csv
 import numpy as np
-import skimage
+import skimage.io
 
 class TrajectoryDataGenerator(Sequence):
     """Documentation to be written
     Note that this generator will be only for training.
     We will use another one for test data (which does not include ground truth mask).
     """
+    
+    #CHANGE THIS
+    dimensions = (256, 256)
 
-    def __init__(self, step_size, img_directory, mask_directory):
+    def __init__(self, batch_size, img_directory, mask_directory):
         """
-        :param step_size: the number of frames per batch (does not account for instances)
+        :param batch_size: the number of frames per batch (does account for instances)
         """
         
-        self.step_size = step_size
+        self.batch = batch_size
         self.img_directory = img_directory
         self.mask_directory = mask_directory
         self.m_len = 0
@@ -27,6 +30,9 @@ class TrajectoryDataGenerator(Sequence):
 #         self.video_indices = []
         self.epoch_order = None
         self.on_epoch_end()
+        self.input = {'flow_field': np.empty((batch_size, *dimensions, 2)),
+                      'prev_mask': np.empty((batch_size, *dimensions, 1))}
+        self.output = {'P0_conv': np.empty((batch_size, *dimensions, 1))}
 
     def load_video(self, video_list_filename):
         """Loads all the images from a particular video list into the dataset.
@@ -61,23 +67,43 @@ class TrajectoryDataGenerator(Sequence):
             A batch
         """
         
-        i = index * self.step_size
-        end = i + self.step_size
-        
-        instance_num = 0
-        while i < end:
+        map_index = index * self.batch_size
+        n = 0
+
+        unique_img_ids = {}
+        while n < self.batch_size:
             
-            mapped_i = self.epoch_order[i]
+            mapped_i = self.epoch_order[n + map_index]
             data = self.image_info[mapped_i]
+            img_id_pair = self.video_map[mapped_i]
+            # change it so that the map is the pair, and values ARE the instances themselves
+            unique_img_ids[img_id_pair[0]] = img_id_pair[1]
+#             mask = skimage.io.imread(join(self.mask_directory, ))
+#             self.input['flow_field'][n, :, :, :] = 
+#             self.input['prev_mask'] = 
+#             self.input['P0_conv'] = 
+             n += 1
+        
+        unique_data = {}
+        for k, v in unique_img_ids:
             
-            data
+            # work in progress
+            prev_img = skimage.io.imread(join(self.img_directory, k))
+            curr_img = skimage.io.imread(join(self.img_directory, v))
+            flow_field = None # (prev_img, curr_img)
+            prev_img = None
+            curr_img = None
+            prev_mask = skimage.io.imread(join(self.mask_directory, k))
+            curr_mask = 
+            
+        return self.input, self.output
 
     def __len__(self):
         """Number of batch in the Sequence.
         # Returns
             The number of batches in the Sequence.
         """
-        return self.m_len // self.step_size
+        return self.m_len // self.batch_size
 
     def on_epoch_end(self):
         """Method called at the end of every epoch.
