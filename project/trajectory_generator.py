@@ -14,13 +14,16 @@ class TrajectoryDataGenerator(Sequence):
         self.m_len = 0
         self.image_info = []
         self.video_indices = []
+        # indicies to pull from when generating batch
+        self.indices = []
         self.epoch_order = None
         
-    def add_image(self, image_id, path, mask_path):
+    def add_image(self, image_id, path, mask_path, prev_index):
         image_info = {
             "id": image_id,
             "path": path,
-            "mask_path": mask_path
+            "mask_path": mask_path,
+            "prev_index": prev_index
         }
         self.image_info.append(image_info)
     
@@ -50,11 +53,13 @@ class TrajectoryDataGenerator(Sequence):
             img_file, mask_file = matches.group(1, 2)
             img_id = img_file[:-4]
 
-            # Check if files exist
-            if not isfile(join(self.root_dir + '_color', img_file)):
-                continue
-            if not isfile(join(self.root_dir + '_label', mask_file)):
-                mask_file = None
+            # assume files exist
+            
+            #this is the check code
+#             if not isfile(join(self.root_dir + '_color', img_file)):
+#                 continue
+#             if not isfile(join(self.root_dir + '_label', mask_file)):
+#                 mask_file = None
 
             # Add the image to the dataset
             self.add_image(image_id=img_id, path=img_file, mask_path=mask_file)
@@ -77,7 +82,7 @@ class TrajectoryDataGenerator(Sequence):
         # Returns
             The number of batches in the Sequence.
         """
-        raise self.m_len
+        return self.m_len
 
     def on_epoch_end(self):
         """Method called at the end of every epoch.
