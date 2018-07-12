@@ -39,10 +39,10 @@ class TrajectoryDataGenerator(Sequence):
             
 #             start = m_len
             for row in reader:
-                
-                self.image_info.extend(row[:2])
-                self.video.append((row[0], row[1]))
-                m_len += len(row) - 2
+                for c in row[:2]:
+                    self.image_info.append(c)
+                    self.video.append((row[0], row[1]))
+                    m_len += 1
                 
 #             video_indices.append((start, m_len))
 
