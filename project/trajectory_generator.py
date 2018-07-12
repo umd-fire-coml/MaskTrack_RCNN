@@ -22,7 +22,8 @@ class TrajectoryDataGenerator(Sequence):
         self.mask_directory = mask_directory
         self.m_len = 0
         self.image_info = []
-        # 2-tuple list containing start and end indices of video in image_infox
+        self.video_map = []
+        # 2-tuple list containing start and end indices of video in image_info
 #         self.video_indices = []
         self.epoch_order = None
         self.on_epoch_end()
@@ -39,8 +40,9 @@ class TrajectoryDataGenerator(Sequence):
 #             start = m_len
             for row in reader:
                 
-                self.image_info.append(row)
-                m_len += 1
+                self.image_info.extend(row[:2])
+                self.video.append((row[0], row[1]))
+                m_len += len(row) - 2
                 
 #             video_indices.append((start, m_len))
 
@@ -60,11 +62,14 @@ class TrajectoryDataGenerator(Sequence):
         
         i = index * self.step_size
         end = i + self.step_size
+        
+        instance_num = 0
         while i < end:
             
             mapped_i = self.epoch_order[i]
             data = self.image_info[mapped_i]
             
+            data
 
     def __len__(self):
         """Number of batch in the Sequence.
