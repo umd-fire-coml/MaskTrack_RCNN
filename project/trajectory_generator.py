@@ -1,3 +1,7 @@
+####
+# WHATEVER YOU DO, DO NOT IMPORT THIS FILE YET
+####
+
 from keras.utils import Sequence
 import re
 from os.path import join, isfile
@@ -30,7 +34,7 @@ class TrajectoryDataGenerator(Sequence):
 #         self.video_indices = []
         self.epoch_order = None
         self.on_epoch_end()
-        self.input = {'flow_field': np.empty((batch_size, *dimensions, 2)),
+        self.input = {'flow_field': None, #np.empty((batch_size, *dimensions, 2)),
                       'prev_mask': np.empty((batch_size, *dimensions, 1))}
         self.output = {'P0_conv': np.empty((batch_size, *dimensions, 1))}
 
@@ -76,25 +80,35 @@ class TrajectoryDataGenerator(Sequence):
             mapped_i = self.epoch_order[n + map_index]
             data = self.image_info[mapped_i]
             img_id_pair = self.video_map[mapped_i]
-            # change it so that the map is the pair, and values ARE the instances themselves
-            unique_img_ids[img_id_pair[0]] = img_id_pair[1]
-#             mask = skimage.io.imread(join(self.mask_directory, ))
-#             self.input['flow_field'][n, :, :, :] = 
-#             self.input['prev_mask'] = 
+
+            if img_id_pair in unique_img_ids:
+                unique_img_ids[img_id_pair].append(data)
+            else:
+                unique_img_ids[img_id_pair] = [data]
+
 #             self.input['P0_conv'] = 
              n += 1
-        
+
         unique_data = {}
         for k, v in unique_img_ids:
             
+            assert n > 0
+            
             # work in progress
-            prev_img = skimage.io.imread(join(self.img_directory, k))
-            curr_img = skimage.io.imread(join(self.img_directory, v))
+            prev_img = skimage.io.imread(join(self.img_directory, k[0]))
+            curr_img = skimage.io.imread(join(self.img_directory, k[1]))
             flow_field = None # (prev_img, curr_img)
+            # collect garbage
             prev_img = None
             curr_img = None
-            prev_mask = skimage.io.imread(join(self.mask_directory, k))
-            curr_mask = 
+            
+            for data in v:
+                prev_mask = skimage.io.imread(join(self.mask_directory, data))
+                curr_mask = skimage.io.imread(join(self.mask_directory, data))
+                                              
+            flow_field = None
+            prev_mask = None
+            curr_mask = None
             
         return self.input, self.output
 
