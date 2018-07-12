@@ -4,6 +4,7 @@ from os.path import join, isfile
 import os
 import csv
 import numpy as np
+import skimage
 
 class TrajectoryDataGenerator(Sequence):
     """Documentation to be written
@@ -11,12 +12,13 @@ class TrajectoryDataGenerator(Sequence):
     We will use another one for test data (which does not include ground truth mask).
     """
 
-    def __init__(self, step_size, mask_directory):
+    def __init__(self, step_size, img_directory, mask_directory):
         """
         :param step_size: the number of frames per batch (does not account for instances)
         """
         
         self.step_size = step_size
+        self.img_directory = img_directory
         self.mask_directory = mask_directory
         self.m_len = 0
         self.image_info = []
@@ -61,8 +63,8 @@ class TrajectoryDataGenerator(Sequence):
         while i < end:
             
             mapped_i = self.epoch_order[i]
+            data = self.image_info[mapped_i]
             
-            image_info
 
     def __len__(self):
         """Number of batch in the Sequence.
