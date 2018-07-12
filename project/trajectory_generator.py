@@ -14,12 +14,11 @@ class TrajectoryDataGenerator(Sequence):
         self.re_id_module = re_id_module
         self.m_len = 0
         self.image_info = []
+        # 3-tuple list containing 1st, 2nd and end indices
         self.video_indices = []
-        # indicies to pull from when generating batch
-        self.indices = []
         self.epoch_order = None
         
-    def add_image(self, image_id, path, mask_path, prev_index):
+    def add_data(self, image_id, local_id, global_id, prev_index):
         image_info = {
             "id": image_id,
             "path": path,
@@ -33,25 +32,64 @@ class TrajectoryDataGenerator(Sequence):
         video_list_filename: path of the file containing the list of images
         """
 
-        # nothing to do with image
-        # instance id
-        prev_ids = None
-
         with open(video_list_filename, 'rb') as csvfile:
+
             reader = csv.reader(csvfile, delimiter=',')
+
+            first_row = next(reader)
+
+            # nothing to do with image
+            # instance id
+            prev_ids = {}
+            start_index = 0
+            image_info_index = 0
+            
+            col_iter = iter(row)
+
+                img_id = next(row_iter)
+
+            while True:
+                try:
+                    # get the next item
+                    local_id = next(col_iter)
+                except StopIteration:
+                    # if StopIteration is raised, break from loop
+                    break
+                # expect and assume
+                global_id = next(col_iter)
+
+                prev_ids[global_id] = image_info_index
+
+                # Add to the dataset
+                self.add_data(image_id=img_id, local_id, global_id, None)
+                image_info_index += 1
+            
             for row in reader:
                 # nothing to do with image
                 # instance id
-                curr_ids = {}
+                curr_ids = []
 
-                row_iter = iter(row)
+                col_iter = iter(row)
 
-                img_id = row_iter.next()
+                img_id = next(row_iter)
 
-                
-
-            # Add the image to the dataset
-            self.add_image(image_id=img_id, path=img_file, mask_path=mask_file)
+                while True:
+                    try:
+                        # get the next item
+                        local_id = next(col_iter)
+                    except StopIteration:
+                        # if StopIteration is raised, break from loop
+                        break
+                    # expect and assume
+                    global_id = next(col_iter)
+                    curr_ids.append((local_id, global_id))
+                    
+                    # Add to the dataset
+                    self.add_data(image_id=img_id, local_id, global_id, prev_ids[global_id])
+                    
+                 if prev_ids:
+                    pass
+                 prev_ids = curr_ids
 
     def load_mp_data(self):
 
