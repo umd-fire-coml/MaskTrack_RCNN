@@ -10,9 +10,9 @@ class TrajectoryDataGenerator(Sequence):
     We will use another one for test data (which does not include ground truth mask).
     """
 
-    def __init__(self, re_id_module):
-
-        self.re_id_module = re_id_module
+    def __init__(self, batch_size):
+        
+        self.batch_size = batch_size
         self.m_len = 0
         self.image_info = []
         # 2-tuple list containing start and end indices of video in image_infox
@@ -55,7 +55,7 @@ class TrajectoryDataGenerator(Sequence):
         # Returns
             The number of batches in the Sequence.
         """
-        return self.m_len
+        return self.m_len // self.batch_size
 
     def on_epoch_end(self):
         """Method called at the end of every epoch.
