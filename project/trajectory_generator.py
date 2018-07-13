@@ -1,5 +1,5 @@
 ####
-# WHATEVER YOU DO, DO NOT IMPORT THIS FILE YET
+# THIS CODE IS BEING TEST, EXERCISE EXTREME CAUTION
 ####
 
 from keras.utils import Sequence
@@ -96,7 +96,6 @@ class TrajectoryDataGenerator(Sequence):
         map_index = index * self.batch_size
         n = 0
 
-        unique_img_ids = {}
         while n < self.batch_size:
             
             mapped_i = self.epoch_order[n + map_index]
@@ -110,7 +109,7 @@ class TrajectoryDataGenerator(Sequence):
             prev_img = None
             curr_img = None
 
-            self.input['prev_mask'][n] = skimage.io.imread(join(self.mask_directory, data['prev_img_id])) == data['prev_ins_id']
+            self.input['prev_mask'][n] = skimage.io.imread(join(self.mask_directory, data['prev_img_id'])) == data['prev_ins_id']
             self.output['P0_conv'][n] = skimage.io.imread(join(self.mask_directory, data['curr_img_id'])) == data['curr_ins_id']
 
             n += 1
