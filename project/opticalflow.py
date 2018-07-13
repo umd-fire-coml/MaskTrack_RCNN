@@ -81,7 +81,8 @@ class OpticalFlow(object):
     print(finalflow.shape)
     
     x_range, y_range, depth = image_prev.shape
-    image_updated = np.zeros(shape=image_prev.shape)
+    # image_updated = np.zeros(shape=image_prev.shape) # should not be zeros
+    image_updated = np.copy(image_prev) # start with image_prev, to keep nonmoving pixels
 
     for x in range(x_range):
       for y in range(y_range):
