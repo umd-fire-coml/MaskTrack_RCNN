@@ -4,6 +4,8 @@ from keras import backend as K
 from keras import layers as KL
 from keras import models as KM
 from keras.backend import tf as KTF
+import keras.optimizers
+import keras.losses
 
 class MaskTrajectory(object):
 
