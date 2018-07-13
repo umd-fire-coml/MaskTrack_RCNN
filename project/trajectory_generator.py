@@ -41,7 +41,7 @@ class TrajectoryData(object):
                 prev_ins_id = int(row[4])
                 curr_ins_id = int(row[5])
                 self.add_data(prev_img_id, curr_img_id, prev_ins_id, curr_ins_id)
-                m_len += len(row) - 2
+                m_len += 1
 
     def load_all_videos(self, directory, header=False):
 
