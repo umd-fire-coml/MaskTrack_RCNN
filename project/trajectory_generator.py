@@ -1,62 +1,89 @@
+####
+# THIS CODE IS BEING TEST, EXERCISE EXTREME CAUTION
+####
+
 from keras.utils import Sequence
 import re
 from os.path import join, isfile
+import os
+import csv
+import numpy as np
+import skimage.io
 
 class TrajectoryDataGenerator(Sequence):
     """Documentation to be written
     Note that this generator will be only for training.
     We will use another one for test data (which does not include ground truth mask).
     """
+    
+    #CHANGE THIS
+    dimensions = (256, 256)
 
-    def __init__(self, re_id_module):
+    def __init__(self, batch_size, img_directory, mask_directory, optical_flow):
+        """
+        :param batch_size: the number of frames per batch (does account for instances)
+        """
+        
+        self.batch = batch_size
+        self.img_directory = img_directory
+        self.mask_directory = mask_directory
+        self.optical_flow = optical_flow
 
-        self.re_id_module = re_id_module
         self.m_len = 0
         self.image_info = []
-        self.video_indices = []
+#         self.video_map = []
+        # 2-tuple list containing start and end indices of video in image_info
+#         self.video_indices = []
         self.epoch_order = None
+        self.on_epoch_end()
+        self.input = {'flow_field': np.empty((batch_size, *dimensions, 2)),
+                      'prev_mask': np.empty((batch_size, *dimensions, 1))}
+        self.output = {'P0_conv': np.empty((batch_size, *dimensions, 1))}
         
-    def add_image(self):
-        pass
-    
-    def load_video(self, video_list_filename):
+    def add_data(self, prev_img_id, curr_img_id, prev_ins_id, curr_ins_id):
+        
+        image_info = {'prev_img_id': prev_img_id,
+                      'curr_img_id': curr_img_id,
+                      'prev_ins_id': prev_ins_id,
+                      'curr_ins_id': curr_ins_id}
+        self.image_info.append(image_info)
+
+    def load_video(self, video_list_path):
         """Loads all the images from a particular video list into the dataset.
-        video_list_filename: path of the file containing the list of images
-        img_dir: directory of the images
-        mask_dir: directory of the mask images, if available
-        assume_match: Whether to assume all images have ground-truth masks
+        video_list_path: path of the file containing the list of images
         """
-    
-        # Get list of images for this video
-        video_file = open(video_list_filename, 'r')
-        image_filenames = video_file.readlines()
-        video_file.close()
 
-        if image_filenames is None:
-            print('No video list found at {}.'.format(video_list_filename))
-            return
+        with open(video_list_path, 'rb') as csvfile:
 
-        # Generate images and masks
-        for img_mask_paths in image_filenames:
+            reader = csv.reader(csvfile, delimiter=',')
+            
+#             start = m_len
+            for row in reader:
+                prev_img_id = row[0]
+                curr_img_id = row[1]
+                # create an iterator object from that iterable
+                iter_obj = iter(iterable)
 
-            # Set paths and img_id
-            # assume labeled
-            matches = re.search('^.*\\\\(.*\\.jpg).*\\\\(.*\\.png)', img_mask_paths)
-            img_file, mask_file = matches.group(1, 2)
-            img_id = img_file[:-4]
+                # infinite loop
+                while True:
+                    try:
+                        # get the next item
+                        prev_ins_id = int(next(iter_obj))
+                        # do something with element
+                    except StopIteration:
+                        # if StopIteration is raised, break from loop
+                        break
+                    curr_ins_id = int(next(iter_obj))
+                    self.add_data(prev_img_id, curr_img_id, prev_ins_id, curr_ins_id)
+                m_len += len(row) - 2
+                
+#             video_indices.append((start, m_len))
 
-            # Check if files exist
-            if not isfile(join(self.root_dir + '_color', img_file)):
-                continue
-            if not isfile(join(self.root_dir + '_label', mask_file)):
-                mask_file = None
+    def load_all_videos(self, directory):
 
-            # Add the image to the dataset
-            self.add_image("WAD", image_id=img_id, path=img_file, mask_path=mask_file)
-
-    def load_mp_data(self):
-
-        pass
+        _, _, files = next(os.walk(vid_list_dir))
+        for name in files:
+            load_video(join(directory, name))
 
     def __getitem__(self, index):
         """Gets batch at position `index`.
@@ -65,16 +92,39 @@ class TrajectoryDataGenerator(Sequence):
         # Returns
             A batch
         """
-        raise NotImplementedError
+        
+        map_index = index * self.batch_size
+        n = 0
+
+        while n < self.batch_size:
+            
+            mapped_i = self.epoch_order[n + map_index]
+            data = self.image_info[mapped_i]
+            
+            # work in progress
+            prev_img = skimage.io.imread(join(self.img_directory, data['prev_img_id']))
+            curr_img = skimage.io.imread(join(self.img_directory, data['curr_img_id']))
+            self.input['flow_field'][n] = self.optical_flow.get_flow(prev_img, curr_img)
+            # collect garbage
+            prev_img = None
+            curr_img = None
+
+            self.input['prev_mask'][n] = skimage.io.imread(join(self.mask_directory, data['prev_img_id'])) == data['prev_ins_id']
+            self.output['P0_conv'][n] = skimage.io.imread(join(self.mask_directory, data['curr_img_id'])) == data['curr_ins_id']
+
+            n += 1
+            
+        return self.input, self.output
 
     def __len__(self):
         """Number of batch in the Sequence.
         # Returns
             The number of batches in the Sequence.
         """
-        raise self.m_len
+        return self.m_len // self.batch_size
 
     def on_epoch_end(self):
         """Method called at the end of every epoch.
         """
-        pass
+        self.epoch_order = np.arange(self.m_len)
+        np.random.shuffle(self.epoch_order)
