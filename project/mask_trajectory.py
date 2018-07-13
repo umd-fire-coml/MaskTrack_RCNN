@@ -14,7 +14,7 @@ class MaskTrajectory(object):
 
     def __init__(self, mode, config, model_dir,
         debugging=False, optimizer=keras.optimizers.Adadelta(),
-        loss_function=keras.losses.binary_cross_entropy):
+        loss_function=keras.losses.binary_crossentropy):
         """
         Creates and builds the mask propagation network.
         :param mode: either 'training' or 'inference'
