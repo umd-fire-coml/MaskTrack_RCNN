@@ -47,7 +47,7 @@ class OpticalFlow(object):
   
     self.finalflow, self.flows, self.pyramid_0 = PWCNet()(img_prev_p, img_curr_p)
   
-    saver = tf.train.Saver()
+    saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='pwcnet'))
     saver.restore(self.sess, model_path)
     
   def get_flow(self, image_prev, image_curr, resize_ratio=4.0):
@@ -59,8 +59,8 @@ class OpticalFlow(object):
     """
     
     # Resize image
-    image_prev = rescale(image_prev, 1.0 / resize_ratio)
-    image_curr = rescale(image_curr, 1.0 / resize_ratio)
+    image_prev = rescale(image_prev, 1.0 / resize_ratio, mode='constant')
+    image_curr = rescale(image_curr, 1.0 / resize_ratio, mode='constant')
     
     r_finalflow, r_flows, r_pyramid_0 = self.sess.run(
         [self.finalflow, self.flows, self.pyramid_0],
