@@ -19,7 +19,7 @@ class TrajectoryDataGenerator(Sequence):
     #CHANGE THIS
     dimensions = (256, 256)
 
-    def __init__(self, batch_size, img_directory, mask_directory):
+    def __init__(self, batch_size, img_directory, mask_directory, optical_flow):
         """
         :param batch_size: the number of frames per batch (does account for instances)
         """
@@ -27,32 +27,54 @@ class TrajectoryDataGenerator(Sequence):
         self.batch = batch_size
         self.img_directory = img_directory
         self.mask_directory = mask_directory
+        self.optical_flow = optical_flow
+
         self.m_len = 0
         self.image_info = []
-        self.video_map = []
+#         self.video_map = []
         # 2-tuple list containing start and end indices of video in image_info
 #         self.video_indices = []
         self.epoch_order = None
         self.on_epoch_end()
-        self.input = {'flow_field': None, #np.empty((batch_size, *dimensions, 2)),
+        self.input = {'flow_field': np.empty((batch_size, *dimensions, 2)),
                       'prev_mask': np.empty((batch_size, *dimensions, 1))}
         self.output = {'P0_conv': np.empty((batch_size, *dimensions, 1))}
+        
+    def add_data(self, prev_img_id, curr_img_id, prev_ins_id, curr_ins_id):
+        
+        image_info = {'prev_img_id': prev_img_id,
+                      'curr_img_id': curr_img_id,
+                      'prev_ins_id': prev_ins_id,
+                      'curr_ins_id': curr_ins_id}
+        self.image_info.append(image_info)
 
-    def load_video(self, video_list_filename):
+    def load_video(self, video_list_path):
         """Loads all the images from a particular video list into the dataset.
-        video_list_filename: path of the file containing the list of images
+        video_list_path: path of the file containing the list of images
         """
 
-        with open(video_list_filename, 'rb') as csvfile:
+        with open(video_list_path, 'rb') as csvfile:
 
             reader = csv.reader(csvfile, delimiter=',')
             
 #             start = m_len
             for row in reader:
-                img_id_pair = (row[0], row[1])
-                for c in row[:2]:
-                    self.image_info.append(c)
-                    self.video.append(img_id_pair)
+                prev_img_id = row[0]
+                curr_img_id = row[1]
+                # create an iterator object from that iterable
+                iter_obj = iter(iterable)
+
+                # infinite loop
+                while True:
+                    try:
+                        # get the next item
+                        prev_ins_id = int(next(iter_obj))
+                        # do something with element
+                    except StopIteration:
+                        # if StopIteration is raised, break from loop
+                        break
+                    curr_ins_id = int(next(iter_obj))
+                    self.add_data(prev_img_id, curr_img_id, prev_ins_id, curr_ins_id)
                 m_len += len(row) - 2
                 
 #             video_indices.append((start, m_len))
@@ -79,36 +101,19 @@ class TrajectoryDataGenerator(Sequence):
             
             mapped_i = self.epoch_order[n + map_index]
             data = self.image_info[mapped_i]
-            img_id_pair = self.video_map[mapped_i]
-
-            if img_id_pair in unique_img_ids:
-                unique_img_ids[img_id_pair].append(data)
-            else:
-                unique_img_ids[img_id_pair] = [data]
-
-#             self.input['P0_conv'] = 
-             n += 1
-
-        unique_data = {}
-        for k, v in unique_img_ids:
-            
-            assert n > 0
             
             # work in progress
-            prev_img = skimage.io.imread(join(self.img_directory, k[0]))
-            curr_img = skimage.io.imread(join(self.img_directory, k[1]))
-            flow_field = None # (prev_img, curr_img)
+            prev_img = skimage.io.imread(join(self.img_directory, data['prev_img_id']))
+            curr_img = skimage.io.imread(join(self.img_directory, data['curr_img_id']))
+            self.input['flow_field'][n] = self.optical_flow.get_flow(prev_img, curr_img)
             # collect garbage
             prev_img = None
             curr_img = None
-            
-            for data in v:
-                prev_mask = skimage.io.imread(join(self.mask_directory, data))
-                curr_mask = skimage.io.imread(join(self.mask_directory, data))
-                                              
-            flow_field = None
-            prev_mask = None
-            curr_mask = None
+
+            self.input['prev_mask'][n] = skimage.io.imread(join(self.mask_directory, data['prev_img_id])) == data['prev_ins_id']
+            self.output['P0_conv'][n] = skimage.io.imread(join(self.mask_directory, data['curr_img_id'])) == data['curr_ins_id']
+
+            n += 1
             
         return self.input, self.output
 
