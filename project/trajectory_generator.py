@@ -6,9 +6,49 @@ from keras.utils import Sequence
 import re
 from os.path import join, isfile
 import os
-import csv
 import numpy as np
 import skimage.io
+import csv
+
+class TrajectoryData(object):
+    
+    def __init__(self):
+        
+        self.m_len = 0
+        self.image_info = []
+    
+    def add_data(self, prev_img_id, curr_img_id, prev_ins_id, curr_ins_id):
+        
+        image_info = {'prev_img_id': prev_img_id,
+                      'curr_img_id': curr_img_id,
+                      'prev_ins_id': prev_ins_id,
+                      'curr_ins_id': curr_ins_id}
+        self.image_info.append(image_info)
+
+    def load_video(self, video_list_path, header=False):
+        """Loads all the images from a particular video list into the dataset.
+        video_list_path: path of the file containing the list of images
+        """
+
+        with open(video_list_path, 'rb') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',')
+            # skip header
+            if header:
+                next(reader)
+            for row in reader:
+                prev_img_id = row[1]
+                curr_img_id = row[2]
+                prev_ins_id = int(row[4])
+                curr_ins_id = int(row[5])
+                self.add_data(prev_img_id, curr_img_id, prev_ins_id, curr_ins_id)
+                m_len += len(row) - 2
+
+    def load_all_videos(self, directory, header=False):
+
+        _, _, files = next(os.walk(vid_list_dir))
+        for name in files:
+            load_video(join(directory, name), header)
+
 
 class TrajectoryDataGenerator(Sequence):
     """Documentation to be written
@@ -19,7 +59,7 @@ class TrajectoryDataGenerator(Sequence):
     #CHANGE THIS
     dimensions = (256, 256)
 
-    def __init__(self, batch_size, img_directory, mask_directory, optical_flow):
+    def __init__(self, batch_size, img_directory, mask_directory, optical_flow, image_info):
         """
         :param batch_size: the number of frames per batch (does account for instances)
         """
@@ -29,8 +69,8 @@ class TrajectoryDataGenerator(Sequence):
         self.mask_directory = mask_directory
         self.optical_flow = optical_flow
 
-        self.m_len = 0
-        self.image_info = []
+        self.m_len = len(image_info)
+        self.image_info = image_info
 #         self.video_map = []
         # 2-tuple list containing start and end indices of video in image_info
 #         self.video_indices = []
@@ -39,51 +79,6 @@ class TrajectoryDataGenerator(Sequence):
         self.input = {'flow_field': np.empty((batch_size, *dimensions, 2)),
                       'prev_mask': np.empty((batch_size, *dimensions, 1))}
         self.output = {'P0_conv': np.empty((batch_size, *dimensions, 1))}
-        
-    def add_data(self, prev_img_id, curr_img_id, prev_ins_id, curr_ins_id):
-        
-        image_info = {'prev_img_id': prev_img_id,
-                      'curr_img_id': curr_img_id,
-                      'prev_ins_id': prev_ins_id,
-                      'curr_ins_id': curr_ins_id}
-        self.image_info.append(image_info)
-
-    def load_video(self, video_list_path):
-        """Loads all the images from a particular video list into the dataset.
-        video_list_path: path of the file containing the list of images
-        """
-
-        with open(video_list_path, 'rb') as csvfile:
-
-            reader = csv.reader(csvfile, delimiter=',')
-            
-#             start = m_len
-            for row in reader:
-                prev_img_id = row[0]
-                curr_img_id = row[1]
-                # create an iterator object from that iterable
-                iter_obj = iter(iterable)
-
-                # infinite loop
-                while True:
-                    try:
-                        # get the next item
-                        prev_ins_id = int(next(iter_obj))
-                        # do something with element
-                    except StopIteration:
-                        # if StopIteration is raised, break from loop
-                        break
-                    curr_ins_id = int(next(iter_obj))
-                    self.add_data(prev_img_id, curr_img_id, prev_ins_id, curr_ins_id)
-                m_len += len(row) - 2
-                
-#             video_indices.append((start, m_len))
-
-    def load_all_videos(self, directory):
-
-        _, _, files = next(os.walk(vid_list_dir))
-        for name in files:
-            load_video(join(directory, name))
 
     def __getitem__(self, index):
         """Gets batch at position `index`.
