@@ -3,7 +3,8 @@ import sys
 sys.path.append("../")
 
 from pwc_net.model import PWCNet
-import tensorflow as tf
+#import tensorflow as tf
+from keras.backend import tf
 import numpy as np
 import skimage.io as io
 import matplotlib.pyplot as plt
@@ -29,13 +30,14 @@ from skimage.transform import rescale
 
 class OpticalFlow(object):
   
-  def __init__(self, model_path):
+  def __init__(self, model_path, session):
     
     # Run before any call to the model
     # Defines graph and restores trained weights
   
-    tf.reset_default_graph()
-    self.sess = tf.Session()
+    #tf.reset_default_graph()
+    #self.sess = tf.Session()
+    self.sess = session
   
     self.img_prev = tf.placeholder(tf.float32, shape=(None, None, 3), name="img_prev") 
     self.img_curr = tf.placeholder(tf.float32, shape=(None, None, 3), name="img_curr")
