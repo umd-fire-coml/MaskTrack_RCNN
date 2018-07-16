@@ -1,9 +1,6 @@
 import os
-import skimage.io
 import matplotlib.pyplot as plt
 import numpy as np
-
-%matplotlib inline
 
 # Root directory of the project
 ROOT_DIR = os.path.abspath("C:\\Users\\rmdu\\MaskTrack_RCNN")
@@ -34,10 +31,7 @@ for i, info in enumerate(dataset.class_info):
     print("{:3}. {:50}".format(i, info['name']))
 
 # Import Mask RCNN
-from mrcnn.config import Config
-import mrcnn.model as modellib
 from mrcnn import utils
-from mrcnn import visualize
 
 # Load and display random samples
 image_ids = np.random.choice(dataset.image_ids, 4)

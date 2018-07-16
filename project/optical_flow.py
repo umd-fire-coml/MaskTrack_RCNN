@@ -19,12 +19,10 @@ from skimage.transform import rescale
 # Usage:
 #
 # model_path = '../pwc_net/model_3000epoch/model_3007.ckpt'
-# model = OpticalFlow(model_path)
+# model = OpticalFlow(model_path, session)
 #
 # image_prev, image_curr = model.read_images_from_path(path_prev, path_curr)
 # image_prev, image_curr, finalflow, flows, pyramid_0 = model.get_flow(image_prev, image_curr)
-#
-# image_pred = model.apply_flow(image_prev, finalflow)
 #
 # model.plot_flow(image_prev, image_curr, image_pred)
 #
@@ -56,25 +54,26 @@ class OpticalFlow(object):
         Get optical flow between two consecutive frames
         :param image_prev: previous frame as a numpy array
         :param image_curr: current frame as a numpy array
-        :param resize_ratio:
+        :return: flow field between input images
         """
+        def scaler(img):
+            scale_factors = (1.0, 1.0 / resize_ratio, 1.0 / resize_ratio)
+            return rescale(img, scale_factors, mode='constant', multichannel=True)
 
-        # Resize image
-        image_prev = rescale(image_prev, 1.0 / resize_ratio, mode='constant')
-        image_curr = rescale(image_curr, 1.0 / resize_ratio, mode='constant')
+        image_prev = scaler(image_prev)
+        image_curr = scaler(image_curr)
 
-        r_finalflow, r_flows, r_pyramid_0 = self.sess.run(
-            [self.final_flow, self.flows, self.pyramid_0],
+        final_flow = self.sess.run(self.final_flow,
             feed_dict={
                 self.img_prev: image_prev,
                 self.img_curr: image_curr
             }
         )
 
-        return image_prev, image_curr, r_finalflow[0], r_flows[0], r_pyramid_0[0]
+        return final_flow
 
     def _apply_flow(self, image_prev, final_flow):
-        """
+        """DO NOT USE.
         Apply optical flow to previous frame to get predicted next frame
         """
 

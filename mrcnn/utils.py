@@ -432,7 +432,6 @@ class Dataset(object):
         return mask, class_ids
 
 
-
 def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square"):
     """Resizes an image keeping the aspect ratio unchanged.
 

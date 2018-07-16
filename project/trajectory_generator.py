@@ -3,8 +3,7 @@
 ####
 
 from keras.utils import Sequence
-import re
-from os.path import join, isfile
+from os.path import join
 import os
 import numpy as np
 import skimage.io
@@ -12,9 +11,7 @@ import csv
 
 
 class TrajectoryData(object):
-    
     def __init__(self):
-        
         self.m_len = 0
         self.image_info = []
     
@@ -56,8 +53,8 @@ class TrajectoryDataGenerator(Sequence):
     We will use another one for test data (which does not include ground truth mask).
     """
     
-    #CHANGE THIS
-    dimensions = (680,848)
+    # CHANGE THIS
+    dimensions = (680, 848)
 
     def __init__(self, batch_size, img_directory, mask_directory, optical_flow, image_info):
         """
@@ -98,7 +95,6 @@ class TrajectoryDataGenerator(Sequence):
         n = 0
 
         while n < self.batch_size:
-            
             mapped_i = self.epoch_order[n + map_index]
             data = self.image_info[mapped_i]
             
