@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append('../')
+
 import os
 import re
 import argparse
@@ -5,8 +9,8 @@ import numpy as np
 import tensorflow as tf
 import imageio
 
-from .model import PWCNet
-from .flow_utils import vis_flow_pyramid
+from pwc_net import model
+from pwc_net import flow_utils
 
 
 class Tester(object):
@@ -25,7 +29,7 @@ class Tester(object):
         self.images_tf = tf.expand_dims(tf.convert_to_tensor(self.images, dtype=tf.float32),
                                         axis=0)  # shape(1, 2, h, w, 3)
 
-        self.model = PWCNet()
+        self.model = model.PWCNet()
         print(self.images_tf[:, 0])
         self.finalflow, self.flow_pyramid, _ = self.model(self.images_tf[:, 0], self.images_tf[:, 1])
         print(self.finalflow.shape)
@@ -39,16 +43,17 @@ class Tester(object):
             self.sess.run(tf.global_variables_initializer())
 
     def test(self):
-        flow_pyramid = self.sess.run(self.flow_pyramid)
-        finalflow = self.sess.run(self.finalflow)
-        print(finalflow.shape)
+        import time
+        start_time = time.time()
+        finalflow, flow_pyramid = self.sess.run([self.finalflow, self.flow_pyramid])
+        print('time to run: {} s'.format(time.time() - start_time))
 
         flow_pyramid = [fpy[0] for fpy in flow_pyramid]
 
         if not os.path.exists('./test_figure'):
             os.mkdir('./test_figure')
         fname = '_'.join(re.split('[/.]', self.args.input_images[0])[-3:-1])
-        vis_flow_pyramid(flow_pyramid, images=self.images, filename=f'./test_figure/test_{fname}.pdf')
+        flow_utils.vis_flow_pyramid(flow_pyramid, images=self.images, filename=f'./test_figure/test_{fname}.pdf')
         print('Figure saved')
 
 
@@ -58,7 +63,7 @@ if __name__ == '__main__':
                         help='Target images (required)')
     parser.add_argument('--resume', type=str, default=None,
                         help='Learned parameter checkpoint file [None]')
-    parser.add_argument('--device', type=str, default="-1", help='Input utilize gpu-id (-1:cpu)')
+    parser.add_argument('--device', type=str, default='-1', help='Input utilize gpu-id (-1:cpu)')
     args = parser.parse_args()
 
     os.environ['CUDA_VISIBLE_DEVICES'] = args.device
