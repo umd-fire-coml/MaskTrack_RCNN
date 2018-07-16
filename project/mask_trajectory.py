@@ -60,8 +60,7 @@ class MaskTrajectory(object):
         model = KM.Model(inputs, outputs, name='mask_trajectory')
 
         if self.weights_path:
-
-            model.load_weights(weights_path)
+            model.load_weights(self.weights_path)
 
         return model
 
@@ -182,7 +181,7 @@ class MaskTrajectory(object):
             train_generator,
             initial_epoch=self.epoch,
             epochs=epochs,
-#             callbacks=callbacks,
+#           callbacks=callbacks,
             validation_data=val_generator,
             max_queue_size=100,
             workers=workers,

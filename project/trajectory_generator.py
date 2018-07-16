@@ -10,6 +10,7 @@ import numpy as np
 import skimage.io
 import csv
 
+
 class TrajectoryData(object):
     
     def __init__(self):
@@ -44,10 +45,9 @@ class TrajectoryData(object):
                 self.m_len += 1
 
     def load_all_videos(self, directory, header=False):
-
-        _, _, files = next(os.walk(vid_list_dir))
+        _, _, files = next(os.walk(directory))
         for name in files:
-            load_video(join(directory, name), header)
+            self.load_video(join(directory, name), header)
 
 
 class TrajectoryDataGenerator(Sequence):
@@ -105,7 +105,7 @@ class TrajectoryDataGenerator(Sequence):
             # work in progress
             prev_img = skimage.io.imread(join(self.img_directory, data['prev_img_id'] + '.jpg'))
             curr_img = skimage.io.imread(join(self.img_directory, data['curr_img_id'] + '.jpg'))
-            _, _, self.input['flow_field'][n], _, _ = self.optical_flow.get_flow(prev_img, curr_img)
+            _, _, self.input['flow_field'][n], _, _ = self.optical_flow.infer_flow(prev_img, curr_img)
             # collect garbage
             prev_img = None
             curr_img = None
