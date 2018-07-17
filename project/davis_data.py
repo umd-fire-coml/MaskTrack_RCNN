@@ -242,7 +242,7 @@ class DAVISDataset(utils.Dataset):
             return super(self.__class__, self).load_mask(image_id)
 
         # Read the original mask image
-        mask_path = join(self.root_dir + '_label', info['mask_path'])
+        mask_path = join(self.root_dir, info['mask_path'])
         raw_mask = skimage.io.imread(mask_path)
 
         # unique is a sorted array of unique instances (including background)
