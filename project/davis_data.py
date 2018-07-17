@@ -191,6 +191,7 @@ class DAVISDataset(utils.Dataset):
             print(self.root_dir)
             assert exists(join(self.root_dir, 'JPEGImages', quality))
             if labeled:
+                print(self.root_dir)
                 assert exists(join(self.root_dir, 'Annotations', quality))
 
             if labeled:
