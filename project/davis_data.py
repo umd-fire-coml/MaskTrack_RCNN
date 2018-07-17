@@ -99,7 +99,7 @@ class DAVISDataset(utils.Dataset):
             # Add the image to the dataset
             self.add_image("DAVIS", image_id=img_id, path=img_file, mask_path=mask_file)
 
-    def _load_all_images(self, labeled=True, assume_match=False, val_size=0):
+    def _load_all_images(self, quality, labeled=True, assume_match=False, val_size=0):
         """Load all images from the img_dir directory, with corresponding masks
         if doing training.
         assume_match: Whether to assume all images have ground-truth masks (ignored if mask_dir
@@ -108,7 +108,8 @@ class DAVISDataset(utils.Dataset):
         """
 
         # Retrieve list of all images in directory
-        images = next(os.walk(self.root_dir + '_color'))[2]
+
+        images = next(os.walk(join(self.root_dir, 'JPEGImages', quality)))[2]
 
         if val_size > 0:
             imgs_train, imgs_val = train_test_split(images, test_size=val_size, random_state=self.random_state)
@@ -124,8 +125,8 @@ class DAVISDataset(utils.Dataset):
                 if labeled:
                     mask_filename = img_id + '_instanceIds.png'
 
-                    # Ignores the image (doesn't add) if no mask exists
-                    if not assume_match and not isfile(join(self.root_dir + '_label', mask_filename)):
+                    # Ignores the image (doesn't add) if no mask exist
+                    if not assume_match and not isfile(join(self.root_dir, 'Annotations', quality, mask_filename)):
                         continue
                 else:
                     mask_filename = None
@@ -141,7 +142,7 @@ class DAVISDataset(utils.Dataset):
                     mask_filename = img_id + '_instanceIds.png'
 
                     # Ignores the image (doesn't add) if no mask exists
-                    if not assume_match and not isfile(join(self.root_dir + '_label', mask_filename)):
+                    if not assume_match and not isfile(join(self.root_dir, 'Annotations', quality, mask_filename)):
                         continue
                 else:
                     mask_filename = None
@@ -195,9 +196,9 @@ class DAVISDataset(utils.Dataset):
                 assert exists(join(self.root_dir, 'Annotations', quality))
 
             if labeled:
-                val = self._load_all_images(labeled=labeled, assume_match=assume_match, val_size=val_size)
+                val = self._load_all_images(quality, labeled=labeled, assume_match=assume_match, val_size=val_size)
             else:
-                self._load_all_images(labeled=labeled, assume_match=assume_match)
+                self._load_all_images(quality, labeled=labeled, assume_match=assume_match)
 
             self.save_data_to_file(pickle_path)
 
