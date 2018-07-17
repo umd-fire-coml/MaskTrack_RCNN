@@ -36,7 +36,7 @@ index_to_class_names = {v: class_names[k] for k, v in classes_to_index.items()}
 
 class DAVISConfig(config.Config):
     NAME = 'DAVIS'
-
+    NUM_CLASSES = len(class_names) + 1
     BACKBONE = 'resnet101'
 
 
