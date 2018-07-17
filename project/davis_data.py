@@ -191,9 +191,9 @@ class DAVISDataset(utils.Dataset):
         else:
             # Check directories for existence
             print(self.root_dir)
-            assert exists(self.root_dir + '_color')
+            assert exists(self.root_dir + "/JPEGImages/480p")
             if labeled:
-                assert exists(self.root_dir + '_label')
+                assert exists(self.root_dir + "/Annotations/480p")
 
             if labeled:
                 val = self._load_all_images(labeled=labeled, assume_match=assume_match, val_size=val_size)
