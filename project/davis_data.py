@@ -123,7 +123,7 @@ class DAVISDataset(utils.Dataset):
 
                 # If using masks, only add images to dataset that also have a mask
                 if labeled:
-                    mask_filename = img_id + '_instanceIds.png'
+                    mask_filename = img_id + '.png'
 
                     # Ignores the image (doesn't add) if no mask exist
                     if not assume_match and not isfile(join(self.root_dir, 'Annotations', quality, mask_filename)):
@@ -139,7 +139,7 @@ class DAVISDataset(utils.Dataset):
 
                 # If using masks, only add images to dataset that also have a mask
                 if labeled:
-                    mask_filename = img_id + '_instanceIds.png'
+                    mask_filename = img_id + '.png'
 
                     # Ignores the image (doesn't add) if no mask exists
                     if not assume_match and not isfile(join(self.root_dir, 'Annotations', quality, mask_filename)):
@@ -160,10 +160,10 @@ class DAVISDataset(utils.Dataset):
 
             # If using masks, only add images to dataset that also have a mask
             if labeled:
-                mask_filename = img_id + '_instanceIds.png'
+                mask_filename = img_id + '.png'
 
                 # Ignores the image (doesn't add) if no mask exists
-                if not assume_match and not isfile(join(self.root_dir + '_label', mask_filename)):
+                if not assume_match and not isfile(self.root_dir, 'Annotations', quality, mask_filename)):
                     continue
             else:
                 mask_filename = None
