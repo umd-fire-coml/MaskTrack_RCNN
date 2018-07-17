@@ -163,7 +163,7 @@ class DAVISDataset(utils.Dataset):
                 mask_filename = img_id + '.png'
 
                 # Ignores the image (doesn't add) if no mask exists
-                if not assume_match and not isfile(self.root_dir, 'Annotations', quality, mask_filename)):
+                if not assume_match and not isfile(join(self.root_dir, 'Annotations', quality, mask_filename)):
                     continue
             else:
                 mask_filename = None
