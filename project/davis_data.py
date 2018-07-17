@@ -49,29 +49,15 @@ class DAVISDataset(utils.Dataset):
     image_height = 2710
     image_width = 3384
 
-    def __init__(self, directory, quality):
+    def __init__(self, root_dir=None, random_state=42):
         super(self.__class__, self).__init__(self)
 
+        # Add classes (35)
         for class_id, class_name in class_names.items():
-            self.add_class('DAVIS', classes_to_index[class_id], class_name)
+            self.add_class('WAD', classes_to_index[class_id], class_name)
 
-        self.frame_pairs = []  # tuples of image and masks at t-1 and t
-
-        image_dir = "%s/JPEGImages/%s/" % (directory, quality)
-        mask_dir = "%s/Annotations/%s/" % (directory, quality)
-
-        videos = [x[len(image_dir):] for x in glob.glob(image_dir + "*")]
-
-        for video in videos:
-
-            frames = [x[len(image_dir) + len(video) + 1:-4] for x in glob.glob(image_dir + video + "/*")]
-            frames.sort()
-
-            for curr in zip(frames):
-                image_curr = image_dir + video + "/" + curr + ".jpg"
-                mask_curr = mask_dir + video + "/" + curr + ".png"
-
-                self.frame_pairs.append(image_curr, mask_curr)
+        self.root_dir = root_dir
+        self.random_state = random_state
 
 
     def load_video(self, video_list_filename, labeled=True, assume_match=False):
