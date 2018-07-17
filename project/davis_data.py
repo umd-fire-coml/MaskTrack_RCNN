@@ -181,7 +181,7 @@ class DAVISDataset(utils.Dataset):
         val_size: applicable only when labeled = True. it is how much to split training for validation
         use_pickle: If False, forces a fresh load of the files
         """
-
+        self.root_dir = root_dir
         pickle_path = self.root_dir + '.pkl'
 
         if use_pickle and val_size == 0 and isfile(pickle_path):
