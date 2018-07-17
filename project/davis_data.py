@@ -170,7 +170,7 @@ class DAVISDataset(utils.Dataset):
             # Adds the image to the dataset
             self.add_image('DAVIS', img_id, img_filename, mask_path=mask_filename)
 
-    def load_data(self, root_dir, subset, labeled=True, assume_match=False, val_size=0, use_pickle=True):
+    def load_data(self, root_dir, subset, quality, labeled=True, assume_match=False, val_size=0, use_pickle=True):
         """Load a subset of the DAVIS image segmentation dataset.
         root_dir: Root directory of the data
         subset: Which subset to load: images will be looked for in 'subset_color' and masks will
@@ -182,8 +182,6 @@ class DAVISDataset(utils.Dataset):
         use_pickle: If False, forces a fresh load of the files
         """
 
-        self.root_dir = join(root_dir, subset)
-
         pickle_path = self.root_dir + '.pkl'
 
         if use_pickle and val_size == 0 and isfile(pickle_path):
@@ -191,9 +189,9 @@ class DAVISDataset(utils.Dataset):
         else:
             # Check directories for existence
             print(self.root_dir)
-            assert exists(self.root_dir + "/JPEGImages/480p")
+            assert exists(join(self.root_dir, 'JPEGImages', quality))
             if labeled:
-                assert exists(self.root_dir + "/Annotations/480p")
+                assert exists(join(self.root_dir, 'Annotations', quality))
 
             if labeled:
                 val = self._load_all_images(labeled=labeled, assume_match=assume_match, val_size=val_size)
