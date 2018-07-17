@@ -22,9 +22,9 @@ from skimage.transform import rescale
 # model = OpticalFlow(model_path, session)
 #
 # image_prev, image_curr = model.read_images_from_path(path_prev, path_curr)
-# image_prev, image_curr, finalflow, flows, pyramid_0 = model.get_flow(image_prev, image_curr)
+# final_flow = model.get_flow(image_prev, image_curr)
 #
-# model.plot_flow(image_prev, image_curr, image_pred)
+# model.plot_flow(image_prev, image_curr, final_flow)
 #
 ##################################################################
 
@@ -44,17 +44,17 @@ class OpticalFlow(object):
 
         x, self.flows, self.pyramid_0 = PWCNet()(self.img_prev, self.img_curr)
 
-        self.final_flow = tf.image.resize_bilinear(x, tf.shape(self.img_prev)[1:3], name='flow_field')
+        self.final_flow = x  # tf.image.resize_bilinear(x, tf.shape(self.img_prev)[1:3], name='flow_field')
 
         saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='pwcnet'))
         saver.restore(self.sess, model_path)
 
     def infer_flow(self, image_prev, image_curr, resize_ratio=4.0):
         """
-        Get optical flow between two consecutive frames
-        :param image_prev: previous frame as a numpy array
-        :param image_curr: current frame as a numpy array
-        :return: flow field between input images
+        Generate optical flow field between two frames
+        :param image_prev: previous frame as a numpy array [batch, height, width, 3]
+        :param image_curr: current frame as a numpy array [batch, height, width, 3]
+        :return: flow field between input images [batch, height, width, 2]
         """
         def scaler(img):
             scale_factors = (1.0, 1.0 / resize_ratio, 1.0 / resize_ratio)
