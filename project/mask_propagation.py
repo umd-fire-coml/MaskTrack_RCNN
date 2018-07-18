@@ -8,13 +8,30 @@ import tensorflow as tf
 from tensorflow import layers as TL
 from tensorflow import data as TD
 
-from pwc_net.model import PWCNet
+from pwc_net.pytorch.pwc_net_wrapper import PWCNetWrapper
 
-### dependencies ###
-from .mp_data_generator import TensorflowDataGenerator
+# from .mp_data_generator import TensorflowDataGenerator
 
 
-class MaskPropagation(object):
+class MaskPropagationModule:
+    def __init__(self):
+        self._optical_flow_model = PWCNetWrapper()
+        self._mask_propagation_model = MaskPropagationNetwork()
+
+    def infer_mask(self, img1, img2, masks):
+        # obtain full flow field
+
+        # for each mask?, propagate to find current mask
+
+        pass
+
+
+class MaskPropagationNetwork:
+    pass
+
+
+'''
+class MaskPropagationOld(object):
 
     def __init__(self, mode, config, pwc_net_weights_path, model_dir='./logs', debugging=False, isolated=False,
                  optimizer=tf.train.AdadeltaOptimizer(), loss_function=tf.losses.sigmoid_cross_entropy):
@@ -267,11 +284,11 @@ class MaskPropagation(object):
 # test script
 def test():
     root_dir = 'C:/Users/tmthy/Documents/prog/python3/coml/MaskTrack_RCNN/'
-    model_path = os.path.join(root_dir, '/pwc_net/model_3000epoch/model_3007.ckpt')
-    mp = MaskPropagation('training', None, model_path, debugging=True, isolated=False)
+    model_path = os.path.join(root_dir, '/PWC-Net/model_3000epoch/model_3007.ckpt')
+    mp = MaskPropagationOld('training', None, model_path, debugging=True, isolated=False)
 
-    img1 = imageio.imread(os.path.join(root_dir, 'pwc_net/test_images/frame1.jpg'))
-    img2 = imageio.imread(os.path.join(root_dir, 'pwc_net/test_images/frame2.jpg'))
+    img1 = imageio.imread(os.path.join(root_dir, 'PWC-Net/test_images/frame1.jpg'))
+    img2 = imageio.imread(os.path.join(root_dir, 'PWC-Net/test_images/frame2.jpg'))
 
     oflow = mp.infer_flow_field(img1, img2)
     plt.figure(1)
@@ -284,3 +301,5 @@ def test():
     mp.infer_propagated_mask(img1, img2, np.reshape(np.empty(img1.shape)[:, :, 0], (1080, 1349, 1)))
 
     mp.train_batch(img1, img2, np.empty((1080, 1349, 1)), np.empty((1080, 1349, 1)))
+'''
+

@@ -18,7 +18,7 @@ from skimage.transform import rescale
 #
 # Usage:
 #
-# model_path = '../pwc_net/model_3000epoch/model_3007.ckpt'
+# model_path = '../PWC-Net/model_3000epoch/model_3007.ckpt'
 # model = OpticalFlow(model_path, session)
 #
 # image_prev, image_curr = model.read_images_from_path(path_prev, path_curr)
@@ -28,7 +28,7 @@ from skimage.transform import rescale
 #
 ##################################################################
 
-class OpticalFlow(object):
+class OpticalFlowTFOld(object):
 
     def __init__(self, model_path, session):
 
