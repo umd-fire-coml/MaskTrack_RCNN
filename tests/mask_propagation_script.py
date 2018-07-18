@@ -1,6 +1,3 @@
-if __name__ == "__main__" and __package__ is None:
-    __package__ = ".."
-
 import tests.context
 from project.mask_propagation import MaskPropagationModule
 import numpy as np
