@@ -1,7 +1,4 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../pwc_net/pytorch/')))
-
-import project
-import pwc_net
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../pwc_net/')))
