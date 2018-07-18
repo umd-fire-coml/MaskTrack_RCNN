@@ -8,8 +8,8 @@ from pwc_net.pytorch.pwc_net_wrapper import PWCNetWrapper
 
 
 class MaskPropagationModule:
-    def __init__(self):
-        self._optical_flow_model = PWCNetWrapper()
+    def __init__(self, model_pathname=None):
+        self._optical_flow_model = PWCNetWrapper() if model_pathname is None else PWCNetWrapper(model_pathname)
         self._mask_propagation_model = MaskPropagationNetwork()
 
     def infer_mask(self, img1, img2, masks):

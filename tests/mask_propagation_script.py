@@ -4,5 +4,5 @@ import numpy as np
 
 tst = np.empty((3000, 2000), dtype=np.float32)
 
-mp = MaskPropagationModule()
+mp = MaskPropagationModule('./pwc_net/pytorch/pwc_net.pth.tar')
 mp.infer_mask(tst, tst, None)
