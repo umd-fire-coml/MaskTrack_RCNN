@@ -1,4 +1,7 @@
-from context import project
+if __name__ == "__main__" and __package__ is None:
+    __package__ = "tests"
+
+from .context import project
 from project.mask_propagation import MaskPropagationModule
 import numpy as np
 
