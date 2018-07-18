@@ -60,7 +60,7 @@ class DAVISDataset(utils.Dataset):
         self.random_state = random_state
 
 
-    def load_video(self, video_list_filename, labeled=True, assume_match=False):
+    def load_video(self, quality, video_list_filename, labeled=True, assume_match=False):
         """Loads all the images from a particular video list into the dataset.
         video_list_filename: path of the file containing the list of images
         img_dir: directory of the images
