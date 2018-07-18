@@ -205,7 +205,7 @@ class DAVISDataset(utils.Dataset):
             if val is not None:
                 return val
 
-    def load_image(self, image_id):
+    def load_image(self, quality, image_id):
         """Load the specified image and return a [H,W,3] Numpy array.
         image_id: integer id of the image
         """
@@ -214,7 +214,7 @@ class DAVISDataset(utils.Dataset):
 
         # If not a DAVIS dataset image, delegate to parent class
         if info["source"] != 'DAVIS':
-            return super(self.__class__, self).load_image(image_id)
+            return super(self.__class__, self).load_image(quality, image_id)
 
         # Load image
         path = join(self.root_dir, 'JPEGImages', quality, info['path'])
@@ -226,7 +226,7 @@ class DAVISDataset(utils.Dataset):
 
         return image
 
-    def load_mask(self, image_id):
+    def load_mask(self, quality, image_id):
         """Generate instance masks for an image.
         image_id: integer id of the image
         Returns:
@@ -242,7 +242,7 @@ class DAVISDataset(utils.Dataset):
             return super(self.__class__, self).load_mask(image_id)
 
         # Read the original mask image
-        mask_path = join(self.root_dir, info['mask_path'])
+        mask_path = join(self.root_dir,'Annotations', quality, info['mask_path'])
         raw_mask = skimage.io.imread(mask_path)
 
         # unique is a sorted array of unique instances (including background)
