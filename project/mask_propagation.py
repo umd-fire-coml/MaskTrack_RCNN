@@ -20,14 +20,21 @@ class MaskPropagationModule:
 
     def infer_mask(self, img1, img2, masks):
         # obtain full flow field
+        flow = self._optical_flow_model.infer_flow_field(img1, img2)
 
         # for each mask?, propagate to find current mask
 
-        pass
+        return flow
 
 
 class MaskPropagationNetwork:
     pass
+
+
+tst = np.empty((3000, 2000), dtype=np.float32)
+
+mp = MaskPropagationModule()
+mp.infer_mask(tst, tst, None)
 
 
 '''
