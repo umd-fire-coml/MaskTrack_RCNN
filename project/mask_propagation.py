@@ -1,12 +1,4 @@
-import os
-
-import imageio
-import keras.backend as K
-import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
-from tensorflow import layers as TL
-from tensorflow import data as TD
 
 from pwc_net.pytorch.pwc_net_wrapper import PWCNetWrapper
 
@@ -29,12 +21,6 @@ class MaskPropagationModule:
 
 class MaskPropagationNetwork:
     pass
-
-
-tst = np.empty((3000, 2000), dtype=np.float32)
-
-mp = MaskPropagationModule()
-mp.infer_mask(tst, tst, None)
 
 
 '''
