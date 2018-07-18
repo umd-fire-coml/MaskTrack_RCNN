@@ -1,4 +1,4 @@
-from .context import project
+from context import project
 from project.mask_propagation import MaskPropagationModule
 import numpy as np
 
