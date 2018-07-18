@@ -256,7 +256,7 @@ class DAVISDataset(utils.Dataset):
         unique = np.delete(unique, index, axis=0)
 
         # tensors!
-        raw_mask = raw_mask.reshape(image_height, image_width, 1)
+        raw_mask = raw_mask.reshape(self.image_height, self.image_width, 1)
 
         # broadcast!!!!
         # k = instance_count
