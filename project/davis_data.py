@@ -54,7 +54,7 @@ class DAVISDataset(utils.Dataset):
 
         # Add classes (35)
         for class_id, class_name in class_names.items():
-            self.add_class('WAD', classes_to_index[class_id], class_name)
+            self.add_class('DAVIS', classes_to_index[class_id], class_name)
 
         self.root_dir = root_dir
         self.random_state = random_state
