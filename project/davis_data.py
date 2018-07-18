@@ -91,9 +91,9 @@ class DAVISDataset(utils.Dataset):
                 mask_file = None
 
             # Check if files exist
-            if not isfile(join(self.root_dir + '_color', img_file)):
+            if not isfile(join(self.root_dir, 'JPEGImages', quality, img_file)):
                 continue
-            if not assume_match and not isfile(join(self.root_dir + '_label', mask_file)):
+            if not assume_match and not isfile(join(self.root_dir, 'Annotations', quality, mask_file)):
                 mask_file = None
 
             # Add the image to the dataset
@@ -217,7 +217,7 @@ class DAVISDataset(utils.Dataset):
             return super(self.__class__, self).load_image(image_id)
 
         # Load image
-        path = join(self.root_dir + '_color', info['path'])
+        path = join(self.root_dir, 'JPEGImages', quality, info['path'])
         image = skimage.io.imread(path)
 
         # If has an alpha channel, remove it for consistency
