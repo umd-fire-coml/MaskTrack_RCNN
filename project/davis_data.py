@@ -45,6 +45,7 @@ class DAVISConfig(config.Config):
 ###############################################################################
 
 
+
 class DAVISDataset(utils.Dataset):
     image_height = 2710
     image_width = 3384
@@ -54,7 +55,7 @@ class DAVISDataset(utils.Dataset):
 
         # Add classes (35)
         for class_id, class_name in class_names.items():
-            self.add_class('WAD', classes_to_index[class_id], class_name)
+            self.add_class('DAVIS', classes_to_index[class_id], class_name)
 
         self.root_dir = root_dir
         self.random_state = random_state
@@ -91,9 +92,9 @@ class DAVISDataset(utils.Dataset):
                 mask_file = None
 
             # Check if files exist
-            if not isfile(join(self.root_dir + '_color', img_file)):
+            if not isfile(join(self.root_dir, 'JPEGImages', self.quality, img_file)):
                 continue
-            if not assume_match and not isfile(join(self.root_dir + '_label', mask_file)):
+            if not assume_match and not isfile(join(self.root_dir, 'Annotations', self.quality, mask_file)):
                 mask_file = None
 
             # Add the image to the dataset
@@ -108,7 +109,8 @@ class DAVISDataset(utils.Dataset):
         """
 
         # Retrieve list of all images in directory
-        images = next(os.walk(self.root_dir + '_color'))[2]
+
+        images = next(os.walk(join(self.root_dir, 'JPEGImages', self.quality)))[2]
 
         if val_size > 0:
             imgs_train, imgs_val = train_test_split(images, test_size=val_size, random_state=self.random_state)
@@ -122,10 +124,10 @@ class DAVISDataset(utils.Dataset):
 
                 # If using masks, only add images to dataset that also have a mask
                 if labeled:
-                    mask_filename = img_id + '_instanceIds.png'
+                    mask_filename = img_id + '.png'
 
-                    # Ignores the image (doesn't add) if no mask exists
-                    if not assume_match and not isfile(join(self.root_dir + '_label', mask_filename)):
+                    # Ignores the image (doesn't add) if no mask exist
+                    if not assume_match and not isfile(join(self.root_dir, 'Annotations', self.quality, mask_filename)):
                         continue
                 else:
                     mask_filename = None
@@ -138,10 +140,10 @@ class DAVISDataset(utils.Dataset):
 
                 # If using masks, only add images to dataset that also have a mask
                 if labeled:
-                    mask_filename = img_id + '_instanceIds.png'
+                    mask_filename = img_id + '.png'
 
                     # Ignores the image (doesn't add) if no mask exists
-                    if not assume_match and not isfile(join(self.root_dir + '_label', mask_filename)):
+                    if not assume_match and not isfile(join(self.root_dir, 'Annotations', self.quality, mask_filename)):
                         continue
                 else:
                     mask_filename = None
@@ -159,10 +161,10 @@ class DAVISDataset(utils.Dataset):
 
             # If using masks, only add images to dataset that also have a mask
             if labeled:
-                mask_filename = img_id + '_instanceIds.png'
+                mask_filename = img_id + '.png'
 
                 # Ignores the image (doesn't add) if no mask exists
-                if not assume_match and not isfile(join(self.root_dir + '_label', mask_filename)):
+                if not assume_match and not isfile(join(self.root_dir, 'Annotations', self.quality, mask_filename)):
                     continue
             else:
                 mask_filename = None
@@ -170,7 +172,7 @@ class DAVISDataset(utils.Dataset):
             # Adds the image to the dataset
             self.add_image('DAVIS', img_id, img_filename, mask_path=mask_filename)
 
-    def load_data(self, root_dir, subset, labeled=True, assume_match=False, val_size=0, use_pickle=True):
+    def load_data(self, root_dir, subset, quality, labeled=True, assume_match=False, val_size=0, use_pickle=True):
         """Load a subset of the DAVIS image segmentation dataset.
         root_dir: Root directory of the data
         subset: Which subset to load: images will be looked for in 'subset_color' and masks will
@@ -181,9 +183,9 @@ class DAVISDataset(utils.Dataset):
         val_size: applicable only when labeled = True. it is how much to split training for validation
         use_pickle: If False, forces a fresh load of the files
         """
-
-        self.root_dir = join(root_dir, subset)
-
+        self.root_dir = root_dir
+        self.quality = quality
+        
         pickle_path = self.root_dir + '.pkl'
 
         if use_pickle and val_size == 0 and isfile(pickle_path):
@@ -191,9 +193,10 @@ class DAVISDataset(utils.Dataset):
         else:
             # Check directories for existence
             print(self.root_dir)
-            assert exists(self.root_dir + '_color')
+            assert exists(join(self.root_dir, 'JPEGImages', self.quality))
             if labeled:
-                assert exists(self.root_dir + '_label')
+                print(self.root_dir)
+                assert exists(join(self.root_dir, 'Annotations', self.quality))
 
             if labeled:
                 val = self._load_all_images(labeled=labeled, assume_match=assume_match, val_size=val_size)
@@ -214,10 +217,10 @@ class DAVISDataset(utils.Dataset):
 
         # If not a DAVIS dataset image, delegate to parent class
         if info["source"] != 'DAVIS':
-            return super(self.__class__, self).load_image(image_id)
+            return super(self.__class__, self).load_image( image_id)
 
         # Load image
-        path = join(self.root_dir + '_color', info['path'])
+        path = join(self.root_dir, 'JPEGImages', self.quality, info['path'])
         image = skimage.io.imread(path)
 
         # If has an alpha channel, remove it for consistency
@@ -242,7 +245,7 @@ class DAVISDataset(utils.Dataset):
             return super(self.__class__, self).load_mask(image_id)
 
         # Read the original mask image
-        mask_path = join(self.root_dir + '_label', info['mask_path'])
+        mask_path = join(self.root_dir,'Annotations', self.quality, info['mask_path'])
         raw_mask = skimage.io.imread(mask_path)
 
         # unique is a sorted array of unique instances (including background)
@@ -253,7 +256,7 @@ class DAVISDataset(utils.Dataset):
         unique = np.delete(unique, index, axis=0)
 
         # tensors!
-        raw_mask = raw_mask.reshape(image_height, image_width, 1)
+        raw_mask = raw_mask.reshape(self.image_height, self.image_width, 1)
 
         # broadcast!!!!
         # k = instance_count

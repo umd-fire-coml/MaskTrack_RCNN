@@ -7,8 +7,8 @@ from keras.backend import tf as KTF
 import keras.optimizers
 import keras.losses
 
-class MaskTrajectory(object):
 
+class MaskTrajectory(object):
     name = 'mask_trajectory'
     relu_max = 6
 

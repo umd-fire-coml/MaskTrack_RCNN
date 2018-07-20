@@ -9,6 +9,8 @@ from os.path import join, isfile, exists
 
 from sklearn.model_selection import train_test_split
 
+__all__ = ['class_names', 'classes_to_index', 'index_to_classes', 'index_to_class_names', 'WADConfig', 'WADDataset']
+
 ###############################################################################
 #                              CLASS DICTIONARIES                             #
 ###############################################################################
@@ -281,7 +283,7 @@ class WADDataset(utils.Dataset):
         unique = np.delete(unique, index, axis=0)
 
         # tensors!
-        raw_mask = raw_mask.reshape(image_height, image_width, 1)
+        raw_mask = raw_mask.reshape(self.image_height, self.image_width, 1)
 
         # broadcast!!!!
         # k = instance_count
