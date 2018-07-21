@@ -27,6 +27,8 @@ class MaskPropagationNetwork:
     def __init__(self):
         inputs = Input((None, None, 3))
 
+        # TODO add actual
+
         self.model = Model(input=inputs)  # , output=conv10)
         self.model.compile(optimizer=Adam(lr=1e-4), loss='binary_crossentropy', metrics=['accuracy'])
 

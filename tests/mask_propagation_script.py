@@ -1,3 +1,7 @@
+import os
+import sys
+print(os.getcwd())
+print(sys.path)
 # import tests.context
 from project.mask_propagation import MaskPropagationModule
 import numpy as np
