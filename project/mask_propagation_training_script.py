@@ -1,3 +1,5 @@
+#!usr/bin/env python
+
 # Imports
 import skimage.io as io
 import cv2

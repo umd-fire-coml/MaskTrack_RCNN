@@ -12,16 +12,13 @@ import glob
 
 
 class DavisDataset(object):
-
     # TODO: in init include way to download dataset
     # include download link and expected directory structure
 
     def __init__(self, directory, quality, val_videos=[]):
-
         """
         self.frame_pairs = an array of tuples of the form:
         (img_prev, img_curr, mask_prev, mask_curr) PATHS
-
         """
 
         # generate mask pairs
@@ -32,12 +29,12 @@ class DavisDataset(object):
         image_dir = "%s/JPEGImages/%s/" % (directory, quality)
         mask_dir = "%s/Annotations/%s/" % (directory, quality)
 
-        ### CHANGE HERE: splitting into train_videos and val_videos
+        # CHANGE HERE: splitting into train_videos and val_videos
         videos = [x[len(image_dir):] for x in glob.glob(image_dir + "*")]
         self.trn_videos = list(set(videos) - set(val_videos))
         self.val_videos = val_videos
 
-        ### CHANGE HERE:
+        # CHANGE HERE:
         for video in videos:
 
             frames = [x[len(image_dir) + len(video) + 1:-4] for x in glob.glob(image_dir + video + "/*")]
@@ -75,12 +72,12 @@ class DavisDataset(object):
             return self.val_frame_pairs[np.random.choice(range(len(self.val_frame_pairs)))]
         return self.trn_frame_pairs[np.random.choice(range(len(self.trn_frame_pairs)))]
 
-    def data_generator(self, frame_pairs, get_model_input, batch_size=4, shuffle=True, random_seed=42):
-
+    def data_generator(self, frame_pairs, get_model_input, batch_size=4, random_seed=42):
         """
-        Arguments:
-        :param frame_pairs
-        :param get_model_input -> Function to get model input given a frame pair (i.e. apply Optical Flow)
+        :param frame_pairs:
+        :param get_model_input: function to get model input given a frame pair (i.e. apply Optical Flow)
+        :param batch_size:
+        :param random_seed:
         """
 
         np.random.seed(random_seed)
@@ -89,7 +86,6 @@ class DavisDataset(object):
         i = 0
 
         while True:
-
             batch_count = 0
             X = []
             y = []

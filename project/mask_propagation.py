@@ -1,3 +1,7 @@
+"""
+Top-level objects for the mask propagation module.
+"""
+
 from keras.layers import Input, Conv2D, Dropout, MaxPooling2D, Conv2DTranspose, Concatenate
 from keras.models import Model
 from keras.optimizers import Adam
@@ -6,7 +10,6 @@ from keras.losses import K
 
 from pwc_net.pytorch.pwc_net_wrapper import PWCNetWrapper
 
-# from .mp_data_generator import TensorflowDataGenerator
 __all__ = ['MaskPropagationModule', 'MaskPropagationNetwork']
 
 

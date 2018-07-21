@@ -1,14 +1,12 @@
-import os
-
 from keras import backend as K
 from keras import layers as KL
 from keras import models as KM
 from keras.backend import tf as KTF
-import keras.optimizers
 import keras.losses
+import os
 
 
-class MaskTrajectory(object):
+class MaskTrajectoryDeprecated(object):
     name = 'mask_trajectory'
     relu_max = 6
 
@@ -67,7 +65,7 @@ class MaskTrajectory(object):
     # relu with max value defined by the variable relu_max
     def m_relu(x):
 
-        return K.relu(x, max_value=MaskTrajectory.relu_max)
+        return K.relu(x, max_value=MaskTrajectoryDeprecated.relu_max)
 
     def _build_unet(self, x, conv_act=m_relu, deconv_act=None):
         """
@@ -181,7 +179,6 @@ class MaskTrajectory(object):
             train_generator,
             initial_epoch=self.epoch,
             epochs=epochs,
-#           callbacks=callbacks,
             validation_data=val_generator,
             max_queue_size=100,
             workers=workers,

@@ -1,25 +1,30 @@
+"""
+Performs mask fusion on two masks to produce a final output mask. Model is a reduced (3-level deep) U-Net
+architecture.
+"""
+
 import keras.layers as kl
 import keras.models as km
 import keras.optimizers as ko
 import numpy as np
 
 from mrcnn.utils import compute_overlaps_masks
-"""
-inputs:
-- 2 soft masks 
-"""
 
 __all__ = ['MaskFusion']
 
 
-def convolve(filters, kernel_size: int = 3, activation='relu', kernel_initializer='he_normal'):
+def relu6(x):
+    return np.max(0, np.min(x, 6))
+
+
+def convolve(filters, kernel_size: int = 3, activation=relu6, kernel_initializer='he_normal'):
     return kl.Conv2D(filters, kernel_size,
                      activation=activation,
                      kernel_initializer=kernel_initializer,
                      padding='same')
 
 
-def pool(pool_size):
+def pool(pool_size: int):
     return kl.MaxPooling2D(pool_size=pool_size)
 
 
