@@ -31,7 +31,8 @@ def pool(pool_size: int):
 def deconvolve(filters, kernel_size: int = 2, activation=None, kernel_initializer='he_normal'):
     return kl.Conv2DTranspose(filters, kernel_size, strides=kernel_size,
                               activation=activation,
-                              kernel_initializer=kernel_initializer)
+                              kernel_initializer=kernel_initializer,
+                              padding='same')
 
 
 def concat():
