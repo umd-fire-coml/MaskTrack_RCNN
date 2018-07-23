@@ -77,7 +77,7 @@ class MaskFusion:
         self.model = km.Model(inputs=[input_layer], outputs=[mask])
 
         # compile model
-        optimizer = ko.Adadelta()
+        optimizer = ko.Adam()
         loss = 'binary_crossentropy'
         metrics = {
             'IoU': iou,
