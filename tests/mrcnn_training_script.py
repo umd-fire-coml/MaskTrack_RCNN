@@ -41,13 +41,9 @@ print("Size of val set: ", val_steps * batch_size)
 # to import local version of the library
 sys.path.append(MRCNN_DIR)
 
-from mrcnn.config import Config
-from mrcnn import utils
 import mrcnn.model as modellib
-from mrcnn import visualize
-from mrcnn.model import log
 
-from .wad_data import WADConfig, WADDataset
+from data.wad_data import WADConfig, WADDataset
 
 cfg = WADConfig()
 cfg.IMAGES_PER_GPU = 2
